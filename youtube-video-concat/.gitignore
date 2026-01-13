@@ -1,0 +1,4 @@
+# Ignore ffmpeg concat list and outputs
+mylist.txt
+*.MTS
+*.mp4

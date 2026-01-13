@@ -4,7 +4,21 @@ import { join } from "path";
 const sourceDir = join(process.cwd(), "concat_src");
 const destDir = join(process.cwd(), "youtube-video-concat");
 const outputFile = join(destDir, "all_in_one.MTS");
-const myListPath = join(process.cwd(), "mylist.txt");
+const myListPath = join(destDir, "mylist.txt");
+
+async function ffprobeDuration(file: string): Promise<number> {
+  const proc = Bun.spawn([
+    "ffprobe",
+    "-v", "error",
+    "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1",
+    file,
+  ], { stderr: "inherit" });
+  const out = await new Response(proc.stdout).text();
+  const val = parseFloat(out.trim());
+  if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
+  return val;
+}
 
 async function main() {
   // List all .MTS files in sourceDir
@@ -35,6 +49,26 @@ async function main() {
     process.exit(1);
   } else {
     console.log("Concatenation successful:", outputFile);
+  }
+
+  // ---- Duration check ----
+  console.log("\nChecking durations:");
+  let sum = 0;
+  for (const f of files) {
+    const fpath = join(sourceDir, f);
+    const dur = await ffprobeDuration(fpath);
+    sum += dur;
+    console.log(`${f}: ${dur.toFixed(3)}s`);
+  }
+  const outDur = await ffprobeDuration(outputFile);
+  console.log(`\nSum of input durations: ${sum.toFixed(3)}s`);
+  console.log(`Output file duration:    ${outDur.toFixed(3)}s`);
+  const diff = Math.abs(sum - outDur);
+  console.log(`Difference:              ${diff.toFixed(5)}s`);
+  if (diff > 0.01) {
+    console.warn("WARNING: Measurable duration difference detected!");
+  } else {
+    console.log("Durations match.");
   }
 }
 

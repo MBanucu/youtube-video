@@ -25,15 +25,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Cache ffmpeg
-        id: cache-ffmpeg
-        uses: actions/cache@v4
-        with:
-          path: /usr/bin/ffmpeg
-          key: ${{ runner.os }}-ffmpeg-7
-
       - name: Install system dependencies
-        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-pip

@@ -24,24 +24,28 @@ def main():
         vad_filter=args.vad_filter,
     )
 
-    # Create subtitles using pysubs2:
-    subs = pysubs2.load_from_whisper(list(segments))
-    srt_path = args.output if args.output and args.output.endswith(".srt") else (args.output + ".srt" if args.output else None)
+    segments = list(segments)  # Convert generator to list for reuse
 
+    # Create subtitles using pysubs2:
+    subs = pysubs2.load_from_whisper([{'start': s.start, 'end': s.end, 'text': s.text} for s in segments])
+
+    # Always generate SRT
+    srt_path = args.output if args.output and args.output.endswith(".srt") else (args.output + ".srt" if args.output else None)
     if srt_path:
         subs.save(srt_path, format_="srt")
         print(f"SRT written to {srt_path}")
     else:
         print(subs.to_string("srt"))
 
-    # Still output raw transcript to text file if requested
+    # Output raw transcript to text file if requested (avoid overwriting SRT)
     transcript = ""
     for segment in segments:
         transcript += f"[{segment.start:.2f}  {segment.end:.2f}] {segment.text.strip()}\n"
     if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
+        txt_path = args.output.replace('.srt', '.txt') if args.output.endswith('.srt') else args.output
+        with open(txt_path, "w", encoding="utf-8") as f:
             f.write(transcript)
-        print(f"Transcript written to {args.output}")
+        print(f"Transcript written to {txt_path}")
     else:
         print("\n--- Transcript ---")
         print(transcript)

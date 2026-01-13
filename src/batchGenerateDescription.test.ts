@@ -51,11 +51,11 @@ test("batchGenerateDescriptions - processes txt files to descriptions", async ()
   // Check content (real AI-generated)
   const enContent = await Bun.file(join(tmpDescDir, "test-description_en.txt")).text();
   expect(enContent.length).toBeGreaterThan(50); // Substantial content
-  expect(enContent.toLowerCase()).toContain("van"); // Content from SRT
+  expect(enContent.toLowerCase()).toContain("dryer"); // Content from SRT
 
   const deContent = await Bun.file(join(tmpDescDir, "test-description_de.txt")).text();
   expect(deContent.length).toBeGreaterThan(50);
-  expect(deContent.toLowerCase()).toContain("van");
+  expect(deContent.toLowerCase()).toContain("trockner");
 
   // Clean up
   rmSync(tmpTransDir, { recursive: true, force: true });

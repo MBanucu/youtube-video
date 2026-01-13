@@ -35,6 +35,9 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
 
+      - name: Install OpenCode CLI
+        run: curl -fsSL https://opencode.ai/install | bash
+
       - name: Cache Python venv
         uses: actions/cache@v4
         id: cache-venv

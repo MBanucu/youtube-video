@@ -2,8 +2,20 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
 
-// Import the function
-import { batchGenerateDescriptions } from "./batchGenerateDescription";
+// Mock the generateDescriptionsFromPaths function
+import { mock } from "bun:test";
+
+mock.module("./generate-description", () => ({
+  generateDescriptionsFromPaths: mock(async (input: string, output: string, lang: string) => {
+    // Mock implementation: write mock files
+    const fs = await import("fs");
+    const outPath = lang === 'en' ? output.replace('.txt', '_en.txt') : output.replace('.txt', '_de.txt');
+    fs.writeFileSync(outPath, `Mock description for ${lang} from SRT`);
+  }),
+}));
+
+// Import the functions
+import { batchGenerateDescriptions, extractTextFromSRT } from "./batchGenerateDescription";
 
 // Test the extractTextFromSRT function
 test("extractTextFromSRT - extracts text from SRT content", () => {
@@ -48,10 +60,10 @@ test("batchGenerateDescriptions - processes txt files to descriptions", async ()
 
   // Check content (mocked)
   const enContent = await Bun.file(join(tmpDescDir, "test-description_en.txt")).text();
-  expect(enContent).toContain("Mock description for en");
+  expect(enContent).toBe("Mock description for en from SRT");
 
   const deContent = await Bun.file(join(tmpDescDir, "test-description_de.txt")).text();
-  expect(deContent).toContain("Mock description for de");
+  expect(deContent).toBe("Mock description for de from SRT");
 
   // Clean up
   rmSync(tmpTransDir, { recursive: true, force: true });

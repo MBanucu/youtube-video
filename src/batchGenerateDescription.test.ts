@@ -20,7 +20,7 @@ Another line of text here.`;
   expect(result).toBe(expected);
 });
 
-test("batchGenerateDescriptions - processes txt files to descriptions", async () => {
+test.concurrent("batchGenerateDescriptions - processes txt files to descriptions", async () => {
   const tmpTransDir = "./tmp/trans";
   const tmpDescDir = "./tmp/desc";
 

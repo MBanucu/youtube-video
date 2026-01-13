@@ -7,16 +7,29 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  discover-tests:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Discover test files with Bun
+        id: set-matrix
+        run: |
+          MATRIX=$(bun discover-tests.ts)
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  test:
+    needs: discover-tests
+    runs-on: ubuntu-latest
     strategy:
-      matrix:
-        test-group:
-          - "src/batchGenerateDescription.test.ts"
-          - "src/batchTranscribe.test.ts"
-          - "src/extract-wav.test.ts"
-          - "src/runTranscribe.test.ts"
+      matrix: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
       fail-fast: false
 
     steps:
@@ -91,4 +104,4 @@ jobs:
       - name: Run tests
         run: |
           . .venv/bin/activate
-          bun test --concurrent ${{ matrix.test-group }}
+          bun test --concurrent ${{ matrix.test-file }}

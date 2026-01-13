@@ -86,7 +86,7 @@ async function describeAndWrite(prompt: string, outputPath: string, label: strin
   console.log(`Generated ${label} description:\n`);
   console.log(desc);
   await Bun.write(outputPath, desc);
-  console.log(`\n${label} description written to ${outputPath}`);
+  console.log(`\n${label} description written to ${path.resolve(outputPath)}`);
   return desc;
 }
 

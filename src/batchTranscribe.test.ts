@@ -3,7 +3,7 @@ import { batchTranscribe } from "./batchTranscribe";
 import { existsSync, rmSync, mkdirSync } from "fs";
 import { join } from "path";
 
-test("batchTranscribe - processes MTS files to SRT", async () => {
+test.concurrent("batchTranscribe - processes MTS files to SRT", async () => {
   const tmpAudioDir = "./tmp/audio";
   const tmpTransDir = "./tmp/trans";
 

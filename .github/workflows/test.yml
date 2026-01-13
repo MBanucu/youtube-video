@@ -12,7 +12,18 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Tar workspace for artifact
+        run: tar -czf workspace.tar.gz .
+
+      - name: Upload workspace artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-workspace
+          path: workspace.tar.gz
+          retention-days: 1
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -20,15 +31,6 @@ jobs:
           bun-version: latest
 
       - name: Discover test files with Bun
-        id: set-matrix
-        run: |
-          MATRIX=$(bun discover-tests.ts)
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-
-      - name: Tar workspace for artifact
-        run: tar -czf workspace.tar.gz .
-
-      - name: Upload workspace artifact
         uses: actions/upload-artifact@v4
         with:
           name: repo-workspace

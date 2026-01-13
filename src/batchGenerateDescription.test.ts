@@ -17,9 +17,9 @@ test("batchGenerateDescriptions - processes txt files to descriptions", async ()
   mkdirSync(tmpTransDir, { recursive: true });
   mkdirSync(tmpDescDir, { recursive: true });
 
-  // Create mock transcript file
-  const transcriptContent = "[0.00  5.00] Hello world\n[5.00  10.00] This is a test";
-  writeFileSync(join(tmpTransDir, "test.txt"), transcriptContent);
+  // Create mock SRT file (copy from testdata)
+  const srtContent = await Bun.file("testdata/part2.srt").text();
+  writeFileSync(join(tmpTransDir, "test.srt"), srtContent);
 
   // Run batch generate descriptions
   await batchGenerateDescriptions({

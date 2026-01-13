@@ -1,6 +1,9 @@
 # Ignore MTS video files
 *.MTS
 
+# But allow test data
+!testdata/*.MTS
+
 # dependencies (bun install)
 node_modules
 

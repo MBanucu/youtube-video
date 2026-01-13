@@ -13,8 +13,10 @@ jobs:
     strategy:
       matrix:
         test-group:
-          - "src/batchGenerateDescription.test.ts src/batchTranscribe.test.ts"
-          - "src/extract-wav.test.ts src/runTranscribe.test.ts"
+          - "src/batchGenerateDescription.test.ts"
+          - "src/batchTranscribe.test.ts"
+          - "src/extract-wav.test.ts"
+          - "src/runTranscribe.test.ts"
       fail-fast: false
 
     steps:

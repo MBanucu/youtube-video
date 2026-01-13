@@ -1,5 +1,5 @@
 {
-  description = "Dev shell for bun + ffmpeg tools";
+  description = "Dev shell for bun + ffmpeg + faster-whisper transcription";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -16,18 +16,22 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        pythonPackages = ps: with ps; [ faster-whisper ];
+        pythonEnv = pkgs.python313.withPackages pythonPackages;
       in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = [
             pkgs.bun
             pkgs.ffmpeg
+            pythonEnv
           ];
           shellHook = ''
-            echo "Bun and ffmpeg (including ffprobe) are available."
+            echo "Bun, ffmpeg, and Python+faster-whisper available!"
             bun --version
             ffmpeg -version
-            ffprobe -version
+            python3 --version
+            python3 -c "import faster_whisper; print('faster-whisper is ready!')"
           '';
         };
       }

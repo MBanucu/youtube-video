@@ -5,7 +5,7 @@ const audioPath = process.argv[2] || "audio.wav";
 const outputPath = process.argv[3] || "transcript.txt";
 
 const proc = spawn("python3", [
-  "python/transcribe.py",
+  require("path").join("python", "transcribe.py"),
   audioPath,
   "--model", "small",
   "--language", "de",

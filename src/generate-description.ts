@@ -1,5 +1,6 @@
 import yargs from "yargs";
 import path from "path";
+import { paths } from "./paths";
 
 const argv = yargs(process.argv.slice(2))
   .usage("Usage: $0 --input <input.txt> --output <output.txt>")
@@ -8,14 +9,14 @@ const argv = yargs(process.argv.slice(2))
     describe: "Transcription (.txt) file to read",
     type: "string",
     demandOption: false,
-    default: path.join(process.cwd(), "youtube-video-concat", "split", "part1.txt"),
+    default: path.join(paths.transDir, "part1.txt"),
   })
   .option("output", {
     alias: "o",
     describe: "Base output file name (will create _en.txt and _de.txt)",
     type: "string",
     demandOption: false,
-    default: path.join(process.cwd(), "youtube-video-concat", "description.txt"),
+    default: path.join(paths.descriptionsDir, "description.txt"),
   })
   .help()
   .argv;
@@ -23,8 +24,8 @@ const argv = yargs(process.argv.slice(2))
 
 function getOutputPaths(baseOutputPath: string) {
   return {
-    en: baseOutputPath.replace(/\.txt$/, '_en.txt'),
-    de: baseOutputPath.replace(/\.txt$/, '_de.txt'),
+    en: baseOutputPath.slice(0, -4) + '_en.txt',
+    de: baseOutputPath.slice(0, -4) + '_de.txt',
   };
 }
 

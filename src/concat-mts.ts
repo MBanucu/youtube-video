@@ -2,7 +2,8 @@ import { readdir, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
 const sourceDir = join(process.cwd(), "concat_src");
-const destDir = join(process.cwd(), "youtube-video-concat");
+import { paths } from "./paths";
+const destDir = paths.rootConcatDir;
 const outputFile = join(destDir, "all_in_one.MTS");
 const myListPath = join(destDir, "mylist.txt");
 

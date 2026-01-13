@@ -2,13 +2,23 @@ import { spawnSync } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
 
-const splitDir = "youtube-video-concat/split";
-const maxParts = 6;
+import { readdirSync, mkdirSync } from "fs";
+import { paths } from "./paths";
 
-for (let i = 1; i <= maxParts; i++) {
-  const mts = join(splitDir, `part${i}.MTS`);
-  const wav = join(splitDir, `part${i}.wav`);
-  const txt = join(splitDir, `part${i}.txt`);
+const { videosDir, audiosDir, transDir } = paths;
+
+// Ensure output folders exist
+for (const dir of [audiosDir, transDir]) {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+const mtsFiles = readdirSync(videosDir).filter(f => f.endsWith(".MTS"));
+
+for (const mtsBase of mtsFiles) {
+  const partName = mtsBase.replace(/\.MTS$/i, "");
+  const mts = join(videosDir, mtsBase);
+  const wav = join(audiosDir, partName + ".wav");
+  const txt = join(transDir, partName + ".txt");
 
   // Convert MTS to WAV if needed
   if (!existsSync(wav)) {
@@ -24,9 +34,10 @@ for (let i = 1; i <= maxParts; i++) {
 
   // Transcribe
   console.log(`Transcribing ${wav} → ${txt}`);
-  const proc = spawnSync("bun", ["run", "src/runTranscribe.ts", wav, txt], { stdio: "inherit" });
+  const proc = spawnSync("bun", ["run", join("src", "runTranscribe.ts"), wav, txt], { stdio: "inherit" });
   if (proc.status !== 0) {
     console.error(`Transcription failed for ${wav}!`);
   }
   console.log("---");
 }
+

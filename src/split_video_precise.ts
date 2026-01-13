@@ -2,8 +2,10 @@ import { mkdir } from "fs/promises";
 import { join } from "path";
 
 const sourceDir = process.cwd();
-const splitDir = join(sourceDir, "youtube-video-concat", "split");
-const outputDir = join(sourceDir, "youtube-video-concat");
+import { paths } from "./paths";
+const splitDir = paths.videosDir;
+const { rootConcatDir } = paths;
+const outputDir = rootConcatDir;
 const srcFile = join(outputDir, "all_in_one.MTS");
 const PARTS = 6;
 

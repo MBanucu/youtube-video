@@ -1,12 +1,12 @@
 import { readdirSync, existsSync } from "fs";
 import { join, basename } from "path";
 import { generateDescriptionsFromPaths } from "./generate-description";
+import { paths } from "./paths";
 
-const splitDir = "youtube-video-concat/split";
-const outDir = "youtube-video-concat/split/descriptions";
+const { transDir, descriptionsDir: outDir } = paths;
 
-const txtFiles = readdirSync(splitDir)
-  .filter(f => f.endsWith(".txt") && !f.endsWith("-description.txt"))
+const txtFiles = readdirSync(transDir)
+  .filter(f => f.endsWith(".txt"))
   .sort();
 
 (async () => {
@@ -14,14 +14,14 @@ const txtFiles = readdirSync(splitDir)
   let delay = 0;
 
   for (const txt of txtFiles) {
-    const inputFile = join(splitDir, txt);
+    const inputFile = join(transDir, txt);
     const base = basename(txt, ".txt");
     const outputFile = join(outDir, `${base}-description.txt`);
 
     for (const language of ["en", "de"] as const) {
       // Output file path per language
       const langFileSuffix = language === 'en' ? '_en.txt' : '_de.txt';
-      const finalOutFile = outputFile.replace(/\.txt$/, langFileSuffix);
+      const finalOutFile = outputFile.slice(0, -4) + langFileSuffix;
       if (existsSync(finalOutFile)) {
         console.log(`Skipping ${inputFile} (${language}): ${finalOutFile} already exists.`);
         continue;

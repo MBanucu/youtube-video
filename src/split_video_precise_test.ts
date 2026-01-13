@@ -1,9 +1,9 @@
 import { readdir } from "fs/promises";
 import { join } from "path";
 
-const outputDir = join(process.cwd(), "youtube-video-concat");
-const splitDir = join(outputDir, "split");
-const srcFile = join(outputDir, "all_in_one.MTS");
+import { paths } from "./paths";
+const videosDir = paths.videosDir;
+const srcFile = join(paths.rootConcatDir, "all_in_one.MTS");
 const THRESHOLD = 0.01;
 
 async function ffprobeDuration(file: string): Promise<number> {
@@ -25,12 +25,12 @@ async function main() {
   console.log(`Original: ${originalDur.toFixed(3)}s`);
 
   // Find all partN.MTS files
-  const splitFiles = (await readdir(splitDir))
+  const splitFiles = (await readdir(videosDir))
     .filter(f => /^part\d+\.MTS$/.test(f))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   let sum = 0;
   for (const file of splitFiles) {
-    const fp = join(splitDir, file);
+    const fp = join(videosDir, file);
     const dur = await ffprobeDuration(fp);
     sum += dur;
     console.log(`${file}: ${dur.toFixed(3)}s`);

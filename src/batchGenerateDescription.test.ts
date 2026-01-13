@@ -48,12 +48,14 @@ test("batchGenerateDescriptions - processes txt files to descriptions", async ()
   expect(existsSync(enPath), `Expected EN description file at ${enPath}`).toBe(true);
   expect(existsSync(dePath), `Expected DE description file at ${dePath}`).toBe(true);
 
-  // Check content (mocked)
+  // Check content (real AI-generated)
   const enContent = await Bun.file(join(tmpDescDir, "test-description_en.txt")).text();
-  expect(enContent).toBe("Mock description for en from SRT");
+  expect(enContent.length).toBeGreaterThan(50); // Substantial content
+  expect(enContent.toLowerCase()).toContain("van"); // Content from SRT
 
   const deContent = await Bun.file(join(tmpDescDir, "test-description_de.txt")).text();
-  expect(deContent).toBe("Mock description for de from SRT");
+  expect(deContent.length).toBeGreaterThan(50);
+  expect(deContent.toLowerCase()).toContain("van");
 
   // Clean up
   rmSync(tmpTransDir, { recursive: true, force: true });

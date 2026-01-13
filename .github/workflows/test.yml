@@ -76,8 +76,7 @@ jobs:
           ffmpeg -version
           ffprobe -version
 
-      - name: Activate venv for tests
-        run: . .venv/bin/activate
-
       - name: Run tests
-        run: bun test
+        run: |
+          . .venv/bin/activate
+          bun test

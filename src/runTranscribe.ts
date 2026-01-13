@@ -12,8 +12,7 @@ export function runTranscribe(
   language: string = "de"
 ): Promise<number> {
   return new Promise((resolve) => {
-    const pythonPath = join(process.cwd(), '.venv', 'bin', 'python3');
-    const proc = spawn(pythonPath, [
+    const proc = spawn("python3", [
       join("python", "transcribe.py"),
       audioPath,
       "--model", model,

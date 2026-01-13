@@ -39,7 +39,9 @@ jobs:
         uses: actions/cache@v4
         id: cache-ffmpeg
         with:
-          path: ~/.local/bin/ffmpeg
+          path: |
+            ~/.local/bin/ffmpeg
+            ~/.local/bin/ffprobe
           key: ${{ runner.os }}-ffmpeg-btbn-master-latest
 
       - name: Setup FFmpeg
@@ -54,7 +56,9 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Verify FFmpeg
-        run: ffmpeg -version
+        run: |
+          ffmpeg -version
+          ffprobe -version
 
       - name: Debug FFmpeg on test file
         run: |

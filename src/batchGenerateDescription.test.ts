@@ -1,15 +1,6 @@
-import { test, expect, mock } from "bun:test";
+import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "fs";
 import { join } from "path";
-
-// Mock the generateDescriptionsFromPaths function
-mock.module("./generate-description", () => ({
-  generateDescriptionsFromPaths: mock(async (input: string, output: string, lang: string) => {
-    // Mock implementation: just write some content to output
-    const content = `Mock description for ${lang} from ${input}`;
-    writeFileSync(output.replace('.txt', `_${lang}.txt`), content);
-  }),
-}));
 
 // Import the function
 import { batchGenerateDescriptions } from "./batchGenerateDescription";

@@ -11,12 +11,14 @@ import { paths } from "./paths";
  */
 export async function batchTranscribe(options: {
   videosDir?: string;
+  audiosDir?: string;
+  transDir?: string;
   model?: string;
   language?: string;
 } = {}) {
   const videosDir = options.videosDir || paths.videosDir;
-  const audiosDir = paths.audiosDir;
-  const transDir = paths.transDir;
+  const audiosDir = options.audiosDir || paths.audiosDir;
+  const transDir = options.transDir || paths.transDir;
   const model = options.model || "small";
   const language = options.language || "de";
 
@@ -63,6 +65,14 @@ if (import.meta.main) {
         describe: "Directory containing MTS video files",
         type: "string",
       })
+      .option("audios-dir", {
+        describe: "Directory for WAV audio files",
+        type: "string",
+      })
+      .option("trans-dir", {
+        describe: "Directory for SRT transcript files",
+        type: "string",
+      })
       .option("model", {
         describe: "Model size for transcription",
         type: "string",
@@ -78,6 +88,8 @@ if (import.meta.main) {
       .argv;
     await batchTranscribe({
       videosDir: argv["videos-dir"],
+      audiosDir: argv["audios-dir"],
+      transDir: argv["trans-dir"],
       model: argv.model,
       language: argv.language,
     });

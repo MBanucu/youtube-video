@@ -7,7 +7,7 @@ import { paths } from "./paths";
 /**
  * Extract text content from SRT file, removing timestamps and indices.
  */
-function extractTextFromSRT(srtContent: string): string {
+export function extractTextFromSRT(srtContent: string): string {
   const lines = srtContent.split('\n');
   const textLines = lines.filter(line => {
     // Skip empty lines, lines with only numbers (indices), or lines with --> (timestamps)

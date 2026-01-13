@@ -5,6 +5,21 @@ import { join } from "path";
 // Import the function
 import { batchGenerateDescriptions } from "./batchGenerateDescription";
 
+// Test the extractTextFromSRT function
+test("extractTextFromSRT - extracts text from SRT content", () => {
+  const srtContent = `1
+00:00:00,000 --> 00:00:05,000
+Hello world this is a test.
+
+2
+00:00:05,000 --> 00:00:10,000
+Another line of text here.`;
+
+  const expected = "Hello world this is a test. Another line of text here.";
+  const result = extractTextFromSRT(srtContent);
+  expect(result).toBe(expected);
+});
+
 test("batchGenerateDescriptions - processes txt files to descriptions", async () => {
   const tmpTransDir = "./tmp/trans";
   const tmpDescDir = "./tmp/desc";

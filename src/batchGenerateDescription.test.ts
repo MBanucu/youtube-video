@@ -45,8 +45,8 @@ test("batchGenerateDescriptions - processes txt files to descriptions", async ()
   // Check that description files were created
   const enPath = join(tmpDescDir, "test-description_en.txt");
   const dePath = join(tmpDescDir, "test-description_de.txt");
-  expect(existsSync(enPath)).toBe(true);
-  expect(existsSync(dePath)).toBe(true);
+  expect(existsSync(enPath), `Expected EN description file at ${enPath}`).toBe(true);
+  expect(existsSync(dePath), `Expected DE description file at ${dePath}`).toBe(true);
 
   // Check content (mocked)
   const enContent = await Bun.file(join(tmpDescDir, "test-description_en.txt")).text();

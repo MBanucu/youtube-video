@@ -83,10 +83,8 @@ async function generateDescription(prompt: string, maxRetries = 5): Promise<stri
 
 async function describeAndWrite(prompt: string, outputPath: string, label: string) {
   const desc = await generateDescription(prompt);
-  console.log(`Generated ${label} description:\n`);
-  console.log(desc);
   await Bun.write(outputPath, desc);
-  console.log(`\n${label} description written to ${path.resolve(outputPath)}`);
+  console.log(`${label} description written to ${path.resolve(outputPath)}`);
   return desc;
 }
 

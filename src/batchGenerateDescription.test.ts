@@ -6,7 +6,7 @@ import { join, resolve } from "path";
 import { batchGenerateDescriptions, extractTextFromSRT } from "./batchGenerateDescription";
 
 // Test the extractTextFromSRT function
-test("extractTextFromSRT - extracts text from SRT content", () => {
+test.concurrent("extractTextFromSRT - extracts text from SRT content", () => {
   const srtContent = `1
 00:00:00,000 --> 00:00:05,000
 Hello world this is a test.

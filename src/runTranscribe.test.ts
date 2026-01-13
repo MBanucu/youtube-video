@@ -6,7 +6,7 @@ import { join } from "path";
 import { mkdtempSync } from "fs";
 import { tmpdir } from "os";
 
-test("runTranscribe - transcribes wav to srt", async () => {
+test.concurrent("runTranscribe - transcribes wav to srt", async () => {
   const inputVideo = join("testdata", "before24.MTS");
   const tmpDir = mkdtempSync(join(tmpdir(), "runTranscribe-test-"));
   const wavPath = join(tmpDir, "input.wav");

@@ -5,7 +5,7 @@ import { join } from "path";
 import { mkdtempSync } from "fs";
 import { tmpdir } from "os";
 
-test("extractWavFromVideo - extracts wav from MTS", () => {
+test.concurrent("extractWavFromVideo - extracts wav from MTS", () => {
   const inputVideo = join("testdata", "before24.MTS");
   // Create a unique temp directory
   const tmpDir = mkdtempSync(join(tmpdir(), "youtube-video-test-"));

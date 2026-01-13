@@ -20,10 +20,14 @@ const argv = yargs(process.argv.slice(2))
   .help()
   .argv;
 
-const transcriptionPath = argv.input;
-const baseOutputPath = argv.output;
-const outputEnPath = baseOutputPath.replace(/\.txt$/, '_en.txt');
-const outputDePath = baseOutputPath.replace(/\.txt$/, '_de.txt');
+
+function getOutputPaths(baseOutputPath: string) {
+  return {
+    en: baseOutputPath.replace(/\.txt$/, '_en.txt'),
+    de: baseOutputPath.replace(/\.txt$/, '_de.txt'),
+  };
+}
+
 
 async function readStream(
   stream: AsyncIterable<Uint8Array> | null | undefined,
@@ -76,7 +80,16 @@ async function generateDescription(prompt: string, maxRetries = 5): Promise<stri
   throw new Error(`opencode failed after ${maxRetries} retries.`);
 }
 
-async function main() {
+async function describeAndWrite(prompt: string, outputPath: string, label: string) {
+  const desc = await generateDescription(prompt);
+  console.log(`Generated ${label} description:\n`);
+  console.log(desc);
+  await Bun.write(outputPath, desc);
+  console.log(`\n${label} description written to ${outputPath}`);
+  return desc;
+}
+
+export async function generateDescriptionsFromPaths(transcriptionPath: string, baseOutputPath: string, language: 'en' | 'de' | 'both' = 'both') {
   try {
     const transcription = await Bun.file(transcriptionPath).text();
 
@@ -106,26 +119,31 @@ Gib NUR den finalen Text der YouTube-Beschreibung auf Deutsch aus â€” keine zusÃ
 Transkription:
 ${transcription}`;
 
-    const enPromise = generateDescription(enPrompt);
-    await new Promise(res => setTimeout(res, 1000)); // 1s delay before starting German description
-    const dePromise = generateDescription(dePrompt);
-    const [enDescription, deDescription] = await Promise.all([enPromise, dePromise]);
+    const { en: outputEnPath, de: outputDePath } = getOutputPaths(baseOutputPath);
 
-    console.log("Generated English description:\n");
-    console.log(enDescription);
+    let enDescription: string | undefined = undefined;
+    let deDescription: string | undefined = undefined;
 
-    console.log("\nGenerated German description:\n");
-    console.log(deDescription);
-
-    await Bun.write(outputEnPath, enDescription);
-    await Bun.write(outputDePath, deDescription);
-
-    console.log(`\nEnglish description written to ${outputEnPath}`);
-    console.log(`German description written to ${outputDePath}`);
+    if (language === 'en') {
+      enDescription = await describeAndWrite(enPrompt, outputEnPath, 'English');
+    } else if (language === 'de') {
+      deDescription = await describeAndWrite(dePrompt, outputDePath, 'German');
+    } else {
+      const enPromise = describeAndWrite(enPrompt, outputEnPath, 'English');
+      await new Promise(res => setTimeout(res, 1000)); // 1s delay before starting German description
+      const dePromise = describeAndWrite(dePrompt, outputDePath, 'German');
+      [enDescription, deDescription] = await Promise.all([enPromise, dePromise]);
+    }
   } catch (err) {
     console.error("Error:", err);
     process.exit(1);
   }
 }
 
-main();
+
+// CLI entry point
+if (import.meta.main) {
+  const tp = argv.input;
+  const bp = argv.output;
+  generateDescriptionsFromPaths(tp, bp);
+}

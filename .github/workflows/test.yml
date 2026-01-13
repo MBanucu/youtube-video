@@ -35,13 +35,10 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
 
-      - name: Setup FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v3
-        id: setup-ffmpeg
-        with:
-          ffmpeg-version: release
-          architecture: ''
-          linking-type: static
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
 
       - name: Install Python dependencies
         run: |

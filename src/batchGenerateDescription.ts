@@ -1,7 +1,21 @@
-import { readdirSync, existsSync, mkdirSync } from "fs";
+import { readdirSync, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "fs";
+import { tmpdir } from "os";
 import { join, basename } from "path";
 import { generateDescriptionsFromPaths } from "./generate-description";
 import { paths } from "./paths";
+
+/**
+ * Extract text content from SRT file, removing timestamps and indices.
+ */
+function extractTextFromSRT(srtContent: string): string {
+  const lines = srtContent.split('\n');
+  const textLines = lines.filter(line => {
+    // Skip empty lines, lines with only numbers (indices), or lines with --> (timestamps)
+    const trimmed = line.trim();
+    return trimmed && !/^\d+$/.test(trimmed) && !trimmed.includes('-->');
+  });
+  return textLines.join(' ');
+}
 
 /**
  * Batch generates descriptions for all txt files in the trans directory.
@@ -17,16 +31,24 @@ export async function batchGenerateDescriptions(options: {
   // Ensure output folder exists
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
-  const txtFiles = readdirSync(transDir)
-    .filter(f => f.endsWith(".txt"))
+  const srtFiles = readdirSync(transDir)
+    .filter(f => f.endsWith(".srt"))
     .sort();
 
   const jobs: Promise<void>[] = [];
   let delay = 0;
 
-  for (const txt of txtFiles) {
-    const inputFile = join(transDir, txt);
-    const base = basename(txt, ".txt");
+  for (const srt of srtFiles) {
+    const srtPath = join(transDir, srt);
+    const srtContent = readFileSync(srtPath, 'utf-8');
+    const transcriptText = extractTextFromSRT(srtContent);
+
+    // Create a temporary txt file with the extracted text
+    const tempTxtPath = join(tmpdir(), `temp-${Date.now()}-${basename(srt, '.srt')}.txt`);
+    writeFileSync(tempTxtPath, transcriptText);
+
+    const inputFile = tempTxtPath;
+    const base = basename(srt, ".srt");
     const outputFile = join(outDir, `${base}-description.txt`);
 
     for (const language of ["en", "de"] as const) {
@@ -38,16 +60,23 @@ export async function batchGenerateDescriptions(options: {
         continue;
       }
       // Launch each job with delay
-      const job = ((delayMs) => async () => {
+      const job = ((delayMs, tempPath) => async () => {
         await new Promise(res => setTimeout(res, delayMs));
         console.log(`Starting ${language.toUpperCase()} for ${inputFile} after ${delayMs/1000}s ...`);
         try {
           await generateDescriptionsFromPaths(inputFile, outputFile, language);
         } catch (err) {
           console.error(`FAILED for ${inputFile} (${language}):`, err);
+        } finally {
+          // Clean up temp file
+          try {
+            unlinkSync(tempPath);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
         }
-      })(delay)();
-      jobs.push(job);
+      })(delay, tempTxtPath);
+      jobs.push(job());
       delay += 1000; // 1s between starts
     }
   }

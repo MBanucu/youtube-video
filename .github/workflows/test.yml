@@ -36,10 +36,9 @@ jobs:
           cache: 'pip'
 
       - name: Setup FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v3
-        id: setup-ffmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
         with:
-          ffmpeg-version: release
+          version: latest
 
       - name: Install Python dependencies
         run: |

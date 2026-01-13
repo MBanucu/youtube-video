@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 
 // Import the functions
 import { batchGenerateDescriptions, extractTextFromSRT } from "./batchGenerateDescription";
@@ -43,8 +43,8 @@ test("batchGenerateDescriptions - processes txt files to descriptions", async ()
   });
 
   // Check that description files were created
-  const enPath = join(tmpDescDir, "test-description_en.txt");
-  const dePath = join(tmpDescDir, "test-description_de.txt");
+  const enPath = resolve(join(tmpDescDir, "test-description_en.txt"));
+  const dePath = resolve(join(tmpDescDir, "test-description_de.txt"));
   expect(existsSync(enPath), `Expected EN description file at ${enPath}`).toBe(true);
   expect(existsSync(dePath), `Expected DE description file at ${dePath}`).toBe(true);
 

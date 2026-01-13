@@ -56,6 +56,12 @@ jobs:
       - name: Verify FFmpeg
         run: ffmpeg -version
 
+      - name: Debug FFmpeg on test file
+        run: |
+          ls -l testdata/before24.MTS
+          ffprobe -v error testdata/before24.MTS
+          ffmpeg -v verbose -i testdata/before24.MTS -vn -acodec pcm_s16le -ar 16000 -ac 1 /tmp/test.wav || true
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel

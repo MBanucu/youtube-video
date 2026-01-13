@@ -1,15 +1,26 @@
-import { readdirSync, existsSync } from "fs";
+import { readdirSync, existsSync, mkdirSync } from "fs";
 import { join, basename } from "path";
 import { generateDescriptionsFromPaths } from "./generate-description";
 import { paths } from "./paths";
 
-const { transDir, descriptionsDir: outDir } = paths;
+/**
+ * Batch generates descriptions for all txt files in the trans directory.
+ * @param options Configuration options
+ */
+export async function batchGenerateDescriptions(options: {
+  transDir?: string;
+  descriptionsDir?: string;
+} = {}) {
+  const transDir = options.transDir || paths.transDir;
+  const outDir = options.descriptionsDir || paths.descriptionsDir;
 
-const txtFiles = readdirSync(transDir)
-  .filter(f => f.endsWith(".txt"))
-  .sort();
+  // Ensure output folder exists
+  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
-(async () => {
+  const txtFiles = readdirSync(transDir)
+    .filter(f => f.endsWith(".txt"))
+    .sort();
+
   const jobs: Promise<void>[] = [];
   let delay = 0;
 
@@ -43,4 +54,29 @@ const txtFiles = readdirSync(transDir)
 
   await Promise.all(jobs);
   console.log('All jobs complete.');
-})();
+}
+
+if (import.meta.main) {
+  (async () => {
+    // Dynamically import yargs at runtime
+    const yargsMod = await import("yargs");
+    const yargs = yargsMod.default;
+    // @ts-ignore: ignore TS complaint about .argv promise (works in Bun/Node)
+    const argv = await yargs(process.argv.slice(2))
+      .usage("Usage: $0 [options]")
+      .option("trans-dir", {
+        describe: "Directory containing TXT transcript files",
+        type: "string",
+      })
+      .option("descriptions-dir", {
+        describe: "Directory for description output files",
+        type: "string",
+      })
+      .help()
+      .argv;
+    await batchGenerateDescriptions({
+      transDir: argv["trans-dir"],
+      descriptionsDir: argv["descriptions-dir"],
+    });
+  })();
+}

@@ -35,21 +35,21 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
 
-      - name: Cache FFmpeg git static build
+      - name: Cache FFmpeg BtbN build
         uses: actions/cache@v4
         id: cache-ffmpeg
         with:
           path: ~/.local/bin/ffmpeg
-          key: ${{ runner.os }}-ffmpeg-johnvansickle-git-latest
+          key: ${{ runner.os }}-ffmpeg-btbn-master-latest
 
       - name: Setup FFmpeg
         if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
         run: |
-          curl -L https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz -o ffmpeg.tar.xz
+          curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o ffmpeg.tar.xz
           tar xvf ffmpeg.tar.xz
           mkdir -p ~/.local/bin
-          mv ffmpeg-git-*-amd64-static/ffmpeg ~/.local/bin/ffmpeg
-          mv ffmpeg-git-*-amd64-static/ffprobe ~/.local/bin/ffprobe
+          mv ffmpeg-master-latest-linux64-gpl/bin/ffmpeg ~/.local/bin/ffmpeg
+          mv ffmpeg-master-latest-linux64-gpl/bin/ffprobe ~/.local/bin/ffprobe
           chmod +x ~/.local/bin/ffmpeg ~/.local/bin/ffprobe
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 

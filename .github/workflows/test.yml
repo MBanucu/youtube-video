@@ -35,18 +35,13 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
 
-      - name: Cache ffmpeg
-        uses: actions/cache@v4
-        id: cache-ffmpeg
+      - name: Setup FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        id: setup-ffmpeg
         with:
-          path: /usr/bin/ffmpeg /usr/bin/ffprobe
-          key: ${{ runner.os }}-ffmpeg-stable
-
-      - name: Install system dependencies
-        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
+          ffmpeg-version: release
+          architecture: ''
+          linking-type: static
 
       - name: Install Python dependencies
         run: |

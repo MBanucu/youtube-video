@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 
 // Path to the audio file and output file
 const audioPath = process.argv[2] || "audio.wav";
-const outputPath = process.argv[3] || "transcript.txt";
+const outputPath = process.argv[3] || "transcript.srt";
 
 const proc = spawn("python3", [
   require("path").join("python", "transcribe.py"),

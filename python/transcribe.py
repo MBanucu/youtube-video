@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from faster_whisper import WhisperModel
+import pysubs2
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe speech audio using faster-whisper")
@@ -23,10 +24,20 @@ def main():
         vad_filter=args.vad_filter,
     )
 
+    # Create subtitles using pysubs2:
+    subs = pysubs2.load_from_whisper(list(segments))
+    srt_path = args.output if args.output and args.output.endswith(".srt") else (args.output + ".srt" if args.output else None)
+
+    if srt_path:
+        subs.save(srt_path, format_="srt")
+        print(f"SRT written to {srt_path}")
+    else:
+        print(subs.to_string("srt"))
+
+    # Still output raw transcript to text file if requested
     transcript = ""
     for segment in segments:
-        transcript += f"[{segment.start:.2f}  {segment.end:.2f}] {segment.text.strip()}\n"
-
+        transcript += f"[{segment.start:.2f}  {segment.end:.2f}] {segment.text.strip()}\n"
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(transcript)
@@ -34,6 +45,7 @@ def main():
     else:
         print("\n--- Transcript ---")
         print(transcript)
+
 
 if __name__ == "__main__":
     main()

@@ -12,13 +12,13 @@ for (const dir of [audiosDir, transDir]) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-const mtsFiles = readdirSync(videosDir).filter(f => f.endsWith(".MTS"));
+const mtsFiles = readdirSync(videosDir).filter(f => f.endsWith(".MTS")).sort();
 
 for (const mtsBase of mtsFiles) {
   const partName = mtsBase.replace(/\.MTS$/i, "");
   const mts = join(videosDir, mtsBase);
   const wav = join(audiosDir, partName + ".wav");
-  const txt = join(transDir, partName + ".txt");
+  const srt = join(transDir, partName + ".srt");
 
   // Convert MTS to WAV if needed
   if (!existsSync(wav)) {
@@ -33,8 +33,8 @@ for (const mtsBase of mtsFiles) {
   }
 
   // Transcribe
-  console.log(`Transcribing ${wav} → ${txt}`);
-  const proc = spawnSync("bun", ["run", join("src", "runTranscribe.ts"), wav, txt], { stdio: "inherit" });
+  console.log(`Transcribing ${wav} → ${srt}`);
+  const proc = spawnSync("bun", ["run", join("src", "runTranscribe.ts"), wav, srt], { stdio: "inherit" });
   if (proc.status !== 0) {
     console.error(`Transcription failed for ${wav}!`);
   }

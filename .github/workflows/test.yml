@@ -19,20 +19,20 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache Bun modules
+      - name: Cache Bun dependencies
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json', '**/bunfig.toml') }}
           restore-keys: ${{ runner.os }}-bun-
 
-      - name: Install dependencies
+      - name: Install Bun dependencies
         run: bun ci
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.13'
           cache: 'pip'
 
       - name: Cache ffmpeg
@@ -50,7 +50,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
       - name: Run tests

@@ -25,9 +25,9 @@ test.concurrent("concatMts - concatenates MTS files from testdata", async () => 
   const outputPath = resolve(join(outputDir, outputFileName));
   expect(existsSync(outputPath), `Expected output file at ${outputPath}`).toBe(true);
 
-  // Check that mylist.txt was created
-  const mylistPath = resolve(join(outputDir, "mylist.txt"));
-  expect(existsSync(mylistPath), `Expected mylist.txt at ${mylistPath}`).toBe(true);
+  // Check that concat-filelist.txt was created
+  const filelistPath = resolve(join(outputDir, "concat-filelist.txt"));
+  expect(existsSync(filelistPath), `Expected concat-filelist.txt at ${filelistPath}`).toBe(true);
 
   // Clean up
   rmSync(outputDir, { recursive: true, force: true });

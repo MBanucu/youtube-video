@@ -1,27 +1,35 @@
 import { readdir, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-
-const sourceDir = join(process.cwd(), "concat_src");
 import { paths } from "./paths";
-const destDir = paths.rootConcatDir;
-const outputFile = join(destDir, "all_in_one.MTS");
-const myListPath = join(destDir, "mylist.txt");
 
-async function ffprobeDuration(file: string): Promise<number> {
-  const proc = Bun.spawn([
-    "ffprobe",
-    "-v", "error",
-    "-show_entries", "format=duration",
-    "-of", "default=noprint_wrappers=1:nokey=1",
-    file,
-  ], { stderr: "inherit" });
-  const out = await new Response(proc.stdout).text();
-  const val = parseFloat(out.trim());
-  if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
-  return val;
-}
+/**
+ * Concatenates multiple MTS video files into a single output file using ffmpeg.
+ * @param options Configuration options
+ */
+export async function concatMts(options: {
+  sourceDir?: string;
+  outputDir?: string;
+  outputFileName?: string;
+} = {}) {
+  const sourceDir = options.sourceDir || join(process.cwd(), "concat_src");
+  const destDir = options.outputDir || paths.rootConcatDir;
+  const outputFileName = options.outputFileName || "all_in_one.MTS";
+  const outputFile = join(destDir, outputFileName);
+  const myListPath = join(destDir, "mylist.txt");
 
-async function main() {
+  async function ffprobeDuration(file: string): Promise<number> {
+    const proc = Bun.spawn([
+      "ffprobe",
+      "-v", "error",
+      "-show_entries", "format=duration",
+      "-of", "default=noprint_wrappers=1:nokey=1",
+      file,
+    ], { stderr: "inherit" });
+    const out = await new Response(proc.stdout).text();
+    const val = parseFloat(out.trim());
+    if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
+    return val;
+  }
   // List all .MTS files in sourceDir
   const files = (await readdir(sourceDir)).filter(f => f.endsWith(".MTS")).sort();
 
@@ -46,8 +54,7 @@ async function main() {
   const proc = Bun.spawn(ffmpegCmd, { stdio: ["inherit", "inherit", "inherit"] });
   const code = await proc.exited;
   if (code !== 0) {
-    console.error(`ffmpeg failed with code ${code}`);
-    process.exit(1);
+    throw new Error(`ffmpeg failed with code ${code}`);
   } else {
     console.log("Concatenation successful:", outputFile);
   }
@@ -73,7 +80,35 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("Error:", err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  (async () => {
+    // Dynamically import yargs at runtime
+    const yargsMod = await import("yargs");
+    const yargs = yargsMod.default;
+    // @ts-ignore: ignore TS complaint about .argv promise (works in Bun/Node)
+    const argv = await yargs(process.argv.slice(2))
+      .usage("Usage: $0 [options]")
+      .option("source-dir", {
+        describe: "Directory containing MTS files to concatenate",
+        type: "string",
+      })
+      .option("output-dir", {
+        describe: "Directory for output file",
+        type: "string",
+      })
+      .option("output-file-name", {
+        describe: "Name of the output MTS file",
+        type: "string",
+      })
+      .help()
+      .argv;
+    await concatMts({
+      sourceDir: argv["source-dir"],
+      outputDir: argv["output-dir"],
+      outputFileName: argv["output-file-name"],
+    });
+  })().catch((err: any) => {
+    console.error("Error:", err);
+    process.exit(1);
+  });
+}

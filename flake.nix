@@ -30,12 +30,6 @@
           nativeBuildInputs = [ pkgs.makeWrapper ];
           postBuild = ''
             wrapProgram $out/bin/bun --set BIOME_BINARY "${pkgs.biome}/bin/biome"
-            if [ -e $out/bin/bunx ]; then
-              wrapProgram $out/bin/bunx --set BIOME_BINARY "${pkgs.biome}/bin/biome"
-            else
-              ln -s $out/bin/bun $out/bin/bunx
-              wrapProgram $out/bin/bunx --set BIOME_BINARY "${pkgs.biome}/bin/biome"
-            fi
           '';
         };
 

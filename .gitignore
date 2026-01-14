@@ -32,9 +32,11 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 credentials.json
 
 # caches
-.eslintcache
 .cache
 *.tsbuildinfo
+
+# temporary files
+tmp
 
 # IntelliJ based IDEs
 .idea

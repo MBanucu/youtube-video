@@ -1,5 +1,5 @@
 import { readdir, writeFile, mkdir } from "fs/promises";
-import { join, relative } from "path";
+import { join, resolve } from "path";
 import { paths } from "./paths";
 
 /**
@@ -36,7 +36,7 @@ export async function concatMts(options: {
   const files = (await readdir(sourceDir)).filter(f => f.endsWith(".MTS")).sort();
 
   // Prepare mylist.txt content
-  const listContent = files.map(f => `file '${relative(destDir, join(sourceDir, f))}'`).join("\n") + "\n";
+  const listContent = files.map(f => `file '${resolve(join(sourceDir, f))}'`).join("\n") + "\n";
   await writeFile(myListPath, listContent);
   console.log(`${fileListName} written:\n`, listContent);
 

@@ -37,19 +37,6 @@ def main():
     else:
         print(subs.to_string("srt"))
 
-    # Output raw transcript to text file if requested (avoid overwriting SRT)
-    transcript = ""
-    for segment in segments:
-        transcript += f"[{segment.start:.2f}  {segment.end:.2f}] {segment.text.strip()}\n"
-    if args.output:
-        txt_path = args.output.replace('.srt', '.txt') if args.output.endswith('.srt') else args.output
-        with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(transcript)
-        print(f"Transcript written to {txt_path}")
-    else:
-        print("\n--- Transcript ---")
-        print(transcript)
-
 
 if __name__ == "__main__":
     main()

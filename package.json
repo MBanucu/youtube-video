@@ -11,7 +11,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "google-auth-library": "*",
+    "google-auth-library": "^9.0.0",
     "googleapis": "^170.0.0",
     "yargs": "^18.0.0"
   },

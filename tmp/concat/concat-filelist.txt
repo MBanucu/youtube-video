@@ -1,0 +1,2 @@
+file 'testdata/01 - before24.MTS'
+file 'testdata/02 - after24.MTS'

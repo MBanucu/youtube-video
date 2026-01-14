@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { batchTranscribe } from "./batchTranscribe";
+import { batchTranscribe } from "../src/batchTranscribe";
 import { existsSync, rmSync, mkdirSync } from "fs";
 import { join } from "path";
 

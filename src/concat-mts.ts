@@ -10,12 +10,14 @@ export async function concatMts(options: {
   sourceDir?: string;
   outputDir?: string;
   outputFileName?: string;
+  fileListName?: string;
 } = {}) {
   const sourceDir = options.sourceDir || join(process.cwd(), "concat_src");
   const destDir = options.outputDir || paths.rootConcatDir;
   const outputFileName = options.outputFileName || "all_in_one.MTS";
+  const fileListName = options.fileListName || "concat-filelist.txt";
   const outputFile = join(destDir, outputFileName);
-  const myListPath = join(destDir, "concat-filelist.txt");
+  const myListPath = join(destDir, fileListName);
 
   async function ffprobeDuration(file: string): Promise<number> {
     const proc = Bun.spawn([
@@ -36,7 +38,7 @@ export async function concatMts(options: {
   // Prepare mylist.txt content
   const listContent = files.map(f => `file '${join(sourceDir, f)}'`).join("\n") + "\n";
   await writeFile(myListPath, listContent);
-  console.log("concat-filelist.txt written:\n", listContent);
+  console.log(`${fileListName} written:\n`, listContent);
 
   // Ensure output destination exists
   await mkdir(destDir, { recursive: true });
@@ -100,12 +102,17 @@ if (import.meta.main) {
         describe: "Name of the output MTS file",
         type: "string",
       })
+      .option("file-list-name", {
+        describe: "Name of the file list for ffmpeg concat",
+        type: "string",
+      })
       .help()
       .argv;
     await concatMts({
       sourceDir: argv["source-dir"],
       outputDir: argv["output-dir"],
       outputFileName: argv["output-file-name"],
+      fileListName: argv["file-list-name"],
     });
   })().catch((err: any) => {
     console.error("Error:", err);

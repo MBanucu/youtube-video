@@ -60,6 +60,10 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = runtimeInputs;
+          nativeBuildInputs = with pkgs; [
+            # Add this for interactive Bash
+            bashInteractive
+          ];
           # No shellHook needed anymore
         };
       }

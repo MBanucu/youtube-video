@@ -32,17 +32,20 @@ gather_workspace_info() {
 
     echo ""
 
+
     # Tree section
-    local tree_command="tree -a -I 'node_modules|.git|dist|build|.next|.turbo|coverage'"
+    local tree_command="tree -a -I 'node_modules|.git|dist|build|.next|.turbo|coverage|.direnv'"
     print_header "$tree_command"
 
-    tree -a -I 'node_modules|.git|dist|build|.next|.turbo|coverage' "$project_root" 2>/dev/null ||
+    tree -a -I 'node_modules|.git|dist|build|.next|.turbo|coverage|.direnv' "$project_root" 2>/dev/null ||
         echo "(tree command failed or directory is empty)"
     echo ""
     echo ""
 
     # Collect nix files recursively, excluding ignored directories
-    local nix_files=($(find "$project_root" -type d \( -name node_modules -o -name .git -o -name dist -o -name build -o -name .next -o -name .turbo -o -name coverage \) -prune -o -type f -name "*.nix" -printf "%P\n"))
+    local nix_files=($(find "$project_root" -type d \( -name node_modules -o -name .git -o -name dist -o -name build -o -name .next -o -name .turbo -o -name coverage -o -name .direnv \) -prune -o -type f -name "*.nix" -printf "%P\n"))
+    # Collect md files in the root directory only
+    local md_files=($(find "$project_root" -maxdepth 1 -type f -name "*.md" -printf "%P\n"))
 
     # File listing section
     local files=(
@@ -52,8 +55,8 @@ gather_workspace_info() {
         "lefthook.yml"
         "package.json"
         "tsconfig.json"
-        "README.md"
         "${nix_files[@]}"  # Add all nix files here
+        "${md_files[@]}"   # Add all markdown files here
     )
 
     for file in "${files[@]}"; do

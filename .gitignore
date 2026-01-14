@@ -30,6 +30,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Credentials
 credentials.json
+token.json
 
 # caches
 .cache

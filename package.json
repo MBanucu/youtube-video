@@ -11,6 +11,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "googleapis": "^170.0.0",
     "yargs": "^18.0.0"
   },
   "scripts": {

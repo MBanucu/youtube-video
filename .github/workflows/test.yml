@@ -123,6 +123,7 @@ jobs:
         run: bun ci
 
       - name: Setup Python 3.13
+        id: python-setup
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -153,8 +154,8 @@ jobs:
         id: cache-venv
         with:
           path: .venv
-          key: ${{ runner.os }}-python-venv-${{ runner.python-version }}-${{ hashFiles('requirements.txt') }}
-          restore-keys: ${{ runner.os }}-python-venv-${{ runner.python-version }}-
+          key: ${{ runner.os }}-python-venv-${{ steps.python-setup.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-python-venv-${{ steps.python-setup.outputs.python-version }}-
 
       - name: Setup and Install Python dependencies
         if: steps.cache-venv.outputs.cache-hit != 'true'

@@ -120,6 +120,9 @@ jobs:
           name: opencode
           path: ~/.opencode
 
+      - name: Make OpenCode executable
+        run: chmod +x "$HOME/.opencode/bin/opencode"
+
       - name: Ensure OpenCode PATH
         run: echo "$HOME/.opencode/bin" >> $GITHUB_PATH
 

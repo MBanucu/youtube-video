@@ -39,6 +39,9 @@ credentials.json
 # temporary files
 tmp
 
+# helper scripts
+gather_workspace_information.sh
+
 # IntelliJ based IDEs
 .idea
 

@@ -3,5 +3,6 @@
   "entry": ["src/**/*.ts", "test/**/*.ts"],
   "project": ["src/**/*.ts", "test/**/*.ts"],
   "ignoreBinaries": ["biome"],
-  "ignoreDependencies": ["@biomejs/biome"]
+  "ignoreDependencies": ["@biomejs/biome"],
+  "ignoreUnlisted": ["google-auth-library"]
 }

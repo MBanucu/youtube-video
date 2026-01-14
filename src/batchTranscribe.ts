@@ -1,9 +1,9 @@
 import { existsSync } from "fs";
 import { join } from "path";
 import { readdirSync, mkdirSync } from "fs";
-import { extractWavFromVideo } from "./extract-wav";
-import { runTranscribe } from "./runTranscribe";
-import { paths } from "./paths";
+import { extractWavFromVideo } from "@/extract-wav";
+import { runTranscribe } from "@/runTranscribe";
+import { paths } from "@/paths";
 
 /**
  * Batch transcribes all MTS videos in the videos directory to SRT subtitles.

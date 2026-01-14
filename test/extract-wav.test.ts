@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { extractWavFromVideo } from "../src/extract-wav";
+import { extractWavFromVideo } from "@/extract-wav";
 import { existsSync, unlinkSync, statSync, rmSync } from "fs";
 import { join } from "path";
 import { mkdtempSync } from "fs";

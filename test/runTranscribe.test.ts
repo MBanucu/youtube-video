@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
-import { runTranscribe } from "../src/runTranscribe";
-import { extractWavFromVideo } from "../src/extract-wav";
+import { runTranscribe } from "@/runTranscribe";
+import { extractWavFromVideo } from "@/extract-wav";
 import { existsSync, unlinkSync, statSync, rmSync } from "fs";
 import { join } from "path";
 import { mkdtempSync } from "fs";

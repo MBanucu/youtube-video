@@ -1,7 +1,7 @@
 import { readdirSync, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { join, basename } from "path";
-import { generateDescriptionsFromPaths } from "./generate-description";
-import { paths } from "./paths";
+import { generateDescriptionsFromPaths } from "@/generate-description";
+import { paths } from "@/paths";
 
 
 /**

@@ -1,27 +1,42 @@
 {
   "compilerOptions": {
-    // Environment setup & latest features
+    // ───────────────────────────────────────
+    // Environment & modern JS/TS features
+    // ───────────────────────────────────────
     "lib": ["ESNext"],
     "target": "ESNext",
-    "module": "Preserve",
+    "module": "Preserve",               // ← good choice with Bun
     "moduleDetection": "force",
     "jsx": "react-jsx",
     "allowJs": true,
 
-    // Bundler mode
+    // ───────────────────────────────────────
+    // Bundler-friendly mode (Bun loves this)
+    // ───────────────────────────────────────
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "noEmit": true,                     // you're not using tsc to emit → perfect
 
-    // Best practices
+    // ───────────────────────────────────────
+    // Path aliases — the main addition
+    // ───────────────────────────────────────
+    "baseUrl": ".",                     // ← important: makes paths relative to project root
+    "paths": {
+      "@/*": ["src/*"],                  // now you can write: import { … } from "@/utils"
+      "@test/*": ["test/*"]
+    },
+
+    // ───────────────────────────────────────
+    // Strictness & best practices
+    // ───────────────────────────────────────
     "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
 
-    // Some stricter flags (disabled by default)
+    // Optional stricter flags (you had them off → kept as-is)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false

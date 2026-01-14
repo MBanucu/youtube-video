@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { join, resolve } from "path";
-import { concatMts } from "../src/concat-mts";
+import { concatMts } from "@/concat-mts";
 
 test.concurrent("concatMts - concatenates MTS files from testdata", async () => {
   const sourceDir = "./testdata";

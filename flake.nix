@@ -26,6 +26,8 @@
           pkgs.bun
           pkgs.ffmpeg
           pythonEnv
+          pkgs.biome
+          pkgs.lefthook
         ];
       in
       {
@@ -34,7 +36,19 @@
             name = "bun";
             runtimeInputs = runtimeInputs;
             text = ''
+              export BIOME_BINARY="${pkgs.biome}/bin/biome"
               exec bun "$@"
+            '';
+          };
+        };
+
+        apps.bunx = flake-utils.lib.mkApp {
+          drv = pkgs.writeShellApplication {
+            name = "bunx";
+            runtimeInputs = runtimeInputs;
+            text = ''
+              export BIOME_BINARY="${pkgs.biome}/bin/biome"
+              exec bunx "$@"
             '';
           };
         };
@@ -42,11 +56,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = runtimeInputs;
           shellHook = ''
-            echo "Bun, ffmpeg, and Python+faster-whisper available!"
-            bun --version
-            ffmpeg -version
-            python3 --version
-            python3 -c "import faster_whisper; print('faster-whisper is ready!')"
+            export BIOME_BINARY="${pkgs.biome}/bin/biome"
           '';
         };
       }

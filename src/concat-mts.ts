@@ -1,7 +1,7 @@
 import { readdir, writeFile, mkdir } from "fs/promises";
 import { join, resolve } from "path";
-import { paths } from "./paths";
-import { ffprobeDuration } from "./utils";
+import { paths } from "@/paths";
+import { ffprobeDuration } from "@/utils";
 
 /**
  * Concatenates multiple MTS video files into a single output file using ffmpeg.

@@ -4,8 +4,8 @@ import { join, resolve } from "path";
 import { splitVideoPrecise } from "./split_video_precise";
 
 test("splitVideoPrecise - splits MTS file into parts", async () => {
-  const srcFile = "./testdata/01 - before24.MTS";
-  const outputDir = "./tmp/split";
+  const srcFile = join("testdata", "01 - before24.MTS");
+  const outputDir = join("tmp", "split");
   const parts = 2;
 
   // Clean up any existing output dir

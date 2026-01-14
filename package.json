@@ -4,12 +4,19 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
+    "@biomejs/biome": "latest",
+    "@types/bun": "latest",
+    "@types/yargs": "latest",
+    "knip": "latest",
     "typescript": "^5"
   },
   "dependencies": {
     "yargs": "^18.0.0"
+  },
+  "scripts": {
+    "lint": "bunx biome lint --write",
+    "fmt": "bunx biome format --write",
+    "check": "bunx biome check --write",
+    "knip": "knip"
   }
 }

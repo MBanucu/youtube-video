@@ -40,7 +40,6 @@ jobs:
           echo "OpenCode version: $($HOME/.opencode/bin/opencode --version)"
 
       - name: Upload opencode artifact
-        if: hashFiles('$HOME/.opencode/**') != ''
         uses: actions/upload-artifact@v4
         with:
           name: opencode

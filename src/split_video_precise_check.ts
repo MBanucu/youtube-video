@@ -1,26 +1,21 @@
 import { readdir } from "fs/promises";
 import { join } from "path";
-
 import { paths } from "./paths";
-const videosDir = paths.videosDir;
-const srcFile = join(paths.rootConcatDir, "all_in_one.MTS");
-const THRESHOLD = 0.01;
+import { ffprobeDuration } from "./utils";
 
-async function ffprobeDuration(file: string): Promise<number> {
-  const proc = Bun.spawn([
-    "ffprobe",
-    "-v", "error",
-    "-show_entries", "format=duration",
-    "-of", "default=noprint_wrappers=1:nokey=1",
-    file,
-  ], { stderr: "inherit" });
-  const out = await new Response(proc.stdout).text();
-  const val = parseFloat(out.trim());
-  if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
-  return val;
-}
+/**
+ * Checks if the sum of split video part durations matches the original video duration.
+ * @param options Configuration options
+ */
+export async function splitVideoPreciseCheck(options: {
+  srcFile?: string;
+  videosDir?: string;
+  threshold?: number;
+} = {}): Promise<boolean> {
+  const srcFile = options.srcFile || join(paths.rootConcatDir, "all_in_one.MTS");
+  const videosDir = options.videosDir || paths.videosDir;
+  const threshold = options.threshold || 0.01;
 
-async function main() {
   const originalDur = await ffprobeDuration(srcFile);
   console.log(`Original: ${originalDur.toFixed(3)}s`);
 
@@ -38,14 +33,45 @@ async function main() {
   console.log(`\nSum of part durations: ${sum.toFixed(3)}s`);
   const diff = sum - originalDur;
   console.log(`Difference (sum - original): ${diff.toFixed(5)}s`);
-  if (Math.abs(diff) < THRESHOLD) {
+  const passed = Math.abs(diff) < threshold;
+  if (passed) {
     console.log("Test PASSED: Split videos durations match the original.");
   } else {
     console.warn("Test WARNING: There is a non-trivial difference.");
   }
+  return passed;
 }
 
-main().catch((err) => {
-  console.error("Error:", err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  (async () => {
+    // Dynamically import yargs at runtime
+    const yargsMod = await import("yargs");
+    const yargs = yargsMod.default;
+    // @ts-ignore: ignore TS complaint about .argv promise (works in Bun/Node)
+    const argv = await yargs(process.argv.slice(2))
+      .usage("Usage: $0 [options]")
+      .option("src-file", {
+        describe: "Path to the original video file",
+        type: "string",
+      })
+      .option("videos-dir", {
+        describe: "Directory containing the split video parts",
+        type: "string",
+      })
+      .option("threshold", {
+        describe: "Duration difference threshold for pass/fail",
+        type: "number",
+      })
+      .help()
+      .argv;
+    const passed = await splitVideoPreciseCheck({
+      srcFile: argv["src-file"],
+      videosDir: argv["videos-dir"],
+      threshold: argv["threshold"],
+    });
+    process.exit(passed ? 0 : 1);
+  })().catch((err: any) => {
+    console.error("Error:", err);
+    process.exit(1);
+  });
+}

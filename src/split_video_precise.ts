@@ -1,6 +1,7 @@
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import { paths } from "./paths";
+import { ffprobeDuration } from "./utils";
 
 /**
  * Splits a video file into equal-duration parts using ffmpeg.
@@ -15,19 +16,6 @@ export async function splitVideoPrecise(options: {
   const outputDir = options.outputDir || paths.videosDir;
   const parts = options.parts || 6;
 
-  async function ffprobeDuration(file: string): Promise<number> {
-    const proc = Bun.spawn([
-      "ffprobe",
-      "-v", "error",
-      "-show_entries", "format=duration",
-      "-of", "default=noprint_wrappers=1:nokey=1",
-      file,
-    ], { stderr: "inherit" });
-    const out = await new Response(proc.stdout).text();
-    const val = parseFloat(out.trim());
-    if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
-    return val;
-  }
   await mkdir(outputDir, { recursive: true });
   const duration = await ffprobeDuration(srcFile);
   let start = 0;

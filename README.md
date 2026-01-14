@@ -7,7 +7,7 @@ A full automation toolkit for preparing, processing, and (soon) uploading video 
 ## ✨ Features
 
 - **Automated Video Processing Pipeline**
-  - End-to-end handling of large video files: splitting, audio extraction, transcoding, AI transcription, and multilingual video description generation.
+  - End-to-end handling of large video files: splitting, audio extraction, transcoding, AI transcription, multilingual video description generation, and YouTube upload automation.
 
 - **Video Splitting**
   - `split_video_precise.ts`: Precisely splits `.MTS` videos into equal-duration parts for better processing/uploading.
@@ -26,6 +26,9 @@ A full automation toolkit for preparing, processing, and (soon) uploading video 
 
 - **Centralized, Cross-Platform Path Management**
   - `paths.ts`: Provides canonical paths for every batch/script action, ensuring a reproducible, cross-language workflow.
+
+- **YouTube Upload Automation** (New!)
+  - `batchUploadToYoutube.ts`: Batch uploads split video parts to YouTube with generated descriptions, using OAuth2 authentication and the YouTube Data API v3.
 
 ## 🛡️ Code Quality and Best Practices
 

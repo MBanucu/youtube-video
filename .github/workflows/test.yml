@@ -50,6 +50,7 @@ jobs:
           name: opencode
           path: ~/.opencode
           retention-days: 1
+          include-hidden-files: true
 
   lint:
     runs-on: ubuntu-latest

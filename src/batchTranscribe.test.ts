@@ -3,7 +3,7 @@ import { batchTranscribe } from "./batchTranscribe";
 import { existsSync, rmSync, mkdirSync } from "fs";
 import { join } from "path";
 
-test.concurrent("batchTranscribe - processes MTS files to SRT", async () => {
+test("batchTranscribe - processes MTS files to SRT", async () => {
   const tmpAudioDir = "./tmp/audio";
   const tmpTransDir = "./tmp/trans";
 
@@ -24,16 +24,16 @@ test.concurrent("batchTranscribe - processes MTS files to SRT", async () => {
     language: "de"
   });
 
-  // Check that WAV files were created
-  expect(existsSync(join(tmpAudioDir, "before24.wav"))).toBe(true);
-  expect(existsSync(join(tmpAudioDir, "after24.wav"))).toBe(true);
+   // Check that WAV files were created
+   expect(existsSync(join(tmpAudioDir, "01 - before24.wav"))).toBe(true);
+   expect(existsSync(join(tmpAudioDir, "02 - after24.wav"))).toBe(true);
 
-  // Check that SRT files were created
-  expect(existsSync(join(tmpTransDir, "before24.srt"))).toBe(true);
-  expect(existsSync(join(tmpTransDir, "after24.srt"))).toBe(true);
+   // Check that SRT files were created
+   expect(existsSync(join(tmpTransDir, "01 - before24.srt"))).toBe(true);
+   expect(existsSync(join(tmpTransDir, "02 - after24.srt"))).toBe(true);
 
-  // Check SRT content (basic check)
-  const srtContent = await Bun.file(join(tmpTransDir, "before24.srt")).text();
+   // Check SRT content (basic check)
+   const srtContent = await Bun.file(join(tmpTransDir, "01 - before24.srt")).text();
   expect(srtContent.length).toBeGreaterThan(100);
   expect(srtContent.includes("00:00:00,000 -->")).toBe(true);
 

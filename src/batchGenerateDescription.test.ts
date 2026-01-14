@@ -6,7 +6,7 @@ import { join, resolve } from "path";
 import { batchGenerateDescriptions } from "./batchGenerateDescription";
 
 
-test.concurrent("batchGenerateDescriptions - processes txt files to descriptions", async () => {
+test("batchGenerateDescriptions - processes txt files to descriptions", async () => {
   const tmpTransDir = "./tmp/trans";
   const tmpDescDir = "./tmp/desc";
 

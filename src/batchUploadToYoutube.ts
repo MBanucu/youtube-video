@@ -3,10 +3,19 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import readline from 'node:readline'
+import type { Credentials, OAuth2Client } from 'google-auth-library'
 import { google } from 'googleapis'
 import { paths } from './paths' // Import centralized paths
 
 const OAuth2 = google.auth.OAuth2
+
+interface ClientCredentials {
+  installed: {
+    client_id: string
+    client_secret: string
+    redirect_uris: string[]
+  }
+}
 
 // Scopes for YouTube upload access
 const SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
@@ -25,7 +34,9 @@ const PRIVACY_STATUS = 'private' // Options: 'public', 'private', 'unlisted'
  * @param credentials The authorization client credentials.
  * @returns Promise resolving to the authorized OAuth2 client.
  */
-export async function authorize(credentials: any): Promise<any> {
+export async function authorize(
+  credentials: ClientCredentials,
+): Promise<OAuth2Client> {
   const clientSecret = credentials.installed.client_secret
   const clientId = credentials.installed.client_id
   const redirectUrl = credentials.installed.redirect_uris[0]
@@ -35,7 +46,7 @@ export async function authorize(credentials: any): Promise<any> {
     const token = await fs.promises.readFile(TOKEN_PATH, 'utf8')
     oauth2Client.credentials = JSON.parse(token)
     return oauth2Client
-  } catch (err) {
+  } catch (_err) {
     return getNewToken(oauth2Client)
   }
 }
@@ -45,7 +56,9 @@ export async function authorize(credentials: any): Promise<any> {
  * @param oauth2Client The OAuth2 client to get token for.
  * @returns Promise resolving to the authorized OAuth2 client.
  */
-export async function getNewToken(oauth2Client: any): Promise<any> {
+export async function getNewToken(
+  oauth2Client: OAuth2Client,
+): Promise<OAuth2Client> {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
@@ -76,7 +89,7 @@ export async function getNewToken(oauth2Client: any): Promise<any> {
  * Store token to disk for later program executions.
  * @param token The token to store to disk.
  */
-export async function storeToken(token: any): Promise<void> {
+export async function storeToken(token: Credentials): Promise<void> {
   await fs.promises.writeFile(TOKEN_PATH, JSON.stringify(token))
   console.log('Token stored to', TOKEN_PATH)
 }
@@ -90,7 +103,7 @@ export async function storeToken(token: any): Promise<void> {
  * @returns Promise resolving to the uploaded video ID.
  */
 async function uploadVideo(
-  auth: any,
+  auth: OAuth2Client,
   videoPath: string,
   title: string,
   description: string,
@@ -118,7 +131,7 @@ async function uploadVideo(
   console.log(
     `Video uploaded successfully: https://youtu.be/${response.data.id}`,
   )
-  return response.data.id!
+  return response.data.id || ''
 }
 
 /**
@@ -147,8 +160,8 @@ export async function main() {
       .sort((a, b) => {
         const matchA = a.match(/part(\d+)/)
         const matchB = b.match(/part(\d+)/)
-        const numA = matchA && matchA[1] ? parseInt(matchA[1], 10) : 0
-        const numB = matchB && matchB[1] ? parseInt(matchB[1], 10) : 0
+        const numA = matchA?.[1] ? parseInt(matchA[1], 10) : 0
+        const numB = matchB?.[1] ? parseInt(matchB[1], 10) : 0
         return numA - numB
       })
 
@@ -173,7 +186,7 @@ export async function main() {
       let description = ''
       try {
         description = await fs.promises.readFile(descEnPath, 'utf8')
-      } catch (err) {
+      } catch (_err) {
         console.error(
           `Description file not found for part ${partNumber}:`,
           descEnPath,

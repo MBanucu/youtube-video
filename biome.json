@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
   "files": {
-    "includes": ["**", "!!**/*.MTS"]
+    "includes": ["**", "!!**/*.MTS", "!**/.direnv"]
   },
   "linter": {
     "enabled": true,

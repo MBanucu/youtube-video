@@ -23,7 +23,7 @@
           ];
         pythonEnv = pkgs.python313.withPackages pythonPackages;
 
-        # Wrapped bun/bunx with BIOME_BINARY set automatically
+        # Wrapped bun with BIOME_BINARY set automatically (bunx is symlinked in pkgs.bun, so it inherits the wrapper)
         wrappedBun = pkgs.symlinkJoin {
           name = "wrapped-bun";
           paths = [ pkgs.bun ];

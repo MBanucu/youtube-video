@@ -1,9 +1,9 @@
 // src/batchUploadToYoutube.ts
 
 import fs from 'node:fs'
-import { google } from 'googleapis'
 import path from 'node:path'
 import readline from 'node:readline'
+import { google } from 'googleapis'
 import { paths } from './paths' // Import centralized paths
 
 const OAuth2 = google.auth.OAuth2

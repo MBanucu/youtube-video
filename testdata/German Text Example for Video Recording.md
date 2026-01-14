@@ -1,5 +1,7 @@
----
 German Text Example for Video Recording:
+
+---
+
 > Hallo und herzlich willkommen zu unserem Testvideo!  
 > In diesem Video prüfen wir, wie gut die automatische Transkription und Untertitelung auf Deutsch funktioniert.  
 > Der Sommer steht vor der Tür, die Vögel zwitschern, und viele Menschen planen bereits ihren Urlaub.  
@@ -10,4 +12,5 @@ German Text Example for Video Recording:
 > Besonders spannend ist, wie Sprachmodelle Texte transkribieren und sogar ganze Videos beschreiben können.“  
 >  
 > Vielen Dank fürs Zuschauen und bis zum nächsten Mal!
+
 ---

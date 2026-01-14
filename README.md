@@ -116,6 +116,17 @@ To enter a dev shell with all tools available:
 nix develop
 ```
 
+### VSCode with Nix DevShell
+For a seamless VSCode experience with all flake-provided tools:
+
+1. Install [direnv](https://direnv.net/) system-wide via Nix.
+2. Install the [Direnv VSCode extension](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv).
+3. Create `.envrc` in the project root with `use flake`.
+4. Run `direnv allow` to approve.
+5. Open the project in VSCode—the environment loads automatically.
+
+This provides Biome linting, TypeScript checking, and all devShell tools without manual `nix develop`.
+
 ## 🏃‍♂️ Running Scripts (Bun/Flake)
 
 You can run your Bun scripts using the Nix flake app:

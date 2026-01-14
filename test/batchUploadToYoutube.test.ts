@@ -50,8 +50,6 @@ test('main should authorize, find videos, and upload them with descriptions', as
     join: pathJoinMock,
   }))
 
-
-
   // Mock google.youtube service
   const insertMock = mock(async () => ({
     data: { id: 'fake-video-id' },
@@ -62,11 +60,7 @@ test('main should authorize, find videos, and upload them with descriptions', as
     },
   }
   const googleYoutubeMock = mock(() => youtubeServiceMock)
-  // Mock authorize to return a fake auth without prompting
-  const fakeAuth = { credentials: { access_token: 'fake-token' } }
-  mock.module('../src/batchUploadToYoutube', () => ({
-    authorize: mock(async () => fakeAuth),
-  }))
+
 
   mock.module('googleapis', () => ({
     google: {

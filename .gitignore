@@ -34,6 +34,7 @@ credentials.json
 # caches
 .cache
 *.tsbuildinfo
+.direnv
 
 # temporary files
 tmp

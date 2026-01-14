@@ -1,37 +1,41 @@
 import { mkdir } from "fs/promises";
 import { join } from "path";
-
-const sourceDir = process.cwd();
 import { paths } from "./paths";
-const splitDir = paths.videosDir;
-const { rootConcatDir } = paths;
-const outputDir = rootConcatDir;
-const srcFile = join(outputDir, "all_in_one.MTS");
-const PARTS = 6;
 
-async function ffprobeDuration(file: string): Promise<number> {
-  const proc = Bun.spawn([
-    "ffprobe",
-    "-v", "error",
-    "-show_entries", "format=duration",
-    "-of", "default=noprint_wrappers=1:nokey=1",
-    file,
-  ], { stderr: "inherit" });
-  const out = await new Response(proc.stdout).text();
-  const val = parseFloat(out.trim());
-  if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
-  return val;
-}
+/**
+ * Splits a video file into equal-duration parts using ffmpeg.
+ * @param options Configuration options
+ */
+export async function splitVideoPrecise(options: {
+  srcFile?: string;
+  outputDir?: string;
+  parts?: number;
+} = {}) {
+  const srcFile = options.srcFile || join(paths.rootConcatDir, "all_in_one.MTS");
+  const outputDir = options.outputDir || paths.videosDir;
+  const parts = options.parts || 6;
 
-async function splitPrecise() {
-  await mkdir(splitDir, { recursive: true });
+  async function ffprobeDuration(file: string): Promise<number> {
+    const proc = Bun.spawn([
+      "ffprobe",
+      "-v", "error",
+      "-show_entries", "format=duration",
+      "-of", "default=noprint_wrappers=1:nokey=1",
+      file,
+    ], { stderr: "inherit" });
+    const out = await new Response(proc.stdout).text();
+    const val = parseFloat(out.trim());
+    if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
+    return val;
+  }
+  await mkdir(outputDir, { recursive: true });
   const duration = await ffprobeDuration(srcFile);
   let start = 0;
   let remaining = duration;
 
-  for (let i = 1; i <= PARTS; i++) {
-    const outFile = join(splitDir, `part${i}.MTS`);
-    const remParts = PARTS - (i - 1);
+  for (let i = 1; i <= parts; i++) {
+    const outFile = join(outputDir, `part${i}.MTS`);
+    const remParts = parts - (i - 1);
     const partDuration = remaining / remParts;
     const partDurationStr = partDuration.toFixed(3);
     const startStr = start.toFixed(3);
@@ -40,7 +44,7 @@ async function splitPrecise() {
       "ffmpeg",
       "-ss", startStr,
       "-i", srcFile,
-      ...(i === PARTS ? [] : ["-t", partDurationStr]),
+      ...(i === parts ? [] : ["-t", partDurationStr]),
       "-c", "copy",
       outFile,
     ];
@@ -48,8 +52,7 @@ async function splitPrecise() {
     const proc = Bun.spawn(ffmpegCmd, { stdio: ["inherit", "inherit", "inherit"] });
     const code = await proc.exited;
     if (code !== 0) {
-      console.error(`ffmpeg failed for part${i} with code ${code}`);
-      process.exit(1);
+      throw new Error(`ffmpeg failed for part${i} with code ${code}`);
     }
     const actualDuration = await ffprobeDuration(outFile);
     console.log(`part${i}.MTS: ${actualDuration.toFixed(3)}s`);
@@ -60,7 +63,35 @@ async function splitPrecise() {
   console.log("Splitting complete.");
 }
 
-splitPrecise().catch((err) => {
-  console.error("Error:", err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  (async () => {
+    // Dynamically import yargs at runtime
+    const yargsMod = await import("yargs");
+    const yargs = yargsMod.default;
+    // @ts-ignore: ignore TS complaint about .argv promise (works in Bun/Node)
+    const argv = await yargs(process.argv.slice(2))
+      .usage("Usage: $0 [options]")
+      .option("src-file", {
+        describe: "Path to the source video file to split",
+        type: "string",
+      })
+      .option("output-dir", {
+        describe: "Directory to output the split parts",
+        type: "string",
+      })
+      .option("parts", {
+        describe: "Number of parts to split into",
+        type: "number",
+      })
+      .help()
+      .argv;
+    await splitVideoPrecise({
+      srcFile: argv["src-file"],
+      outputDir: argv["output-dir"],
+      parts: argv["parts"],
+    });
+  })().catch((err: any) => {
+    console.error("Error:", err);
+    process.exit(1);
+  });
+}

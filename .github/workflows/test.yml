@@ -40,7 +40,7 @@ jobs:
           echo "OpenCode version: $($HOME/.opencode/bin/opencode --version)"
 
       - name: Upload opencode artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencode
           path: $HOME/.opencode
@@ -109,7 +109,7 @@ jobs:
           cache: 'pip'
 
       - name: Download opencode artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: opencode
           path: $HOME/.opencode

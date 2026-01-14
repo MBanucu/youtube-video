@@ -50,121 +50,59 @@ To contribute, ensure all checks pass locally before pushing. Use the Nix dev sh
 
 ---
 
-## 🚀 Development Environment (Nix Flake)
+## Development Environment Setup
 
-This project uses Nix flakes to provide all dependencies (Bun, ffmpeg, Python with `faster-whisper` and `pysubs2`, and the OpenCode CLI) for reproducible cross-platform workflows.
+To get started with this project, you'll need a Nix-based development environment. This project uses a Nix flake to provide a reproducible dev shell with all dependencies (Bun, FFmpeg, Python with faster-whisper, etc.). If you're on NixOS or have Nix installed, follow these steps.
 
-### 🟢 On NixOS
-If you want to add the OpenCode CLI system-wide using Nix flakes, you can do so on any NixOS system—no access to a prebuilt `/etc/nixos` is required.
-
-#### 1. Enable Flakes and Nix Command
-Add to `/etc/nixos/configuration.nix`:
-```nix
-nix.settings.experimental-features = [ "nix-command" "flakes" ];
-```
-
-#### 2. Add OpenCode as a Flake Input
-Create or edit `/etc/nixos/flake.nix` to add OpenCode:
-```nix
-{
-  description = "NixOS system with OpenCode CLI";
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    opencode.url = "github:anomalyco/opencode";
-  };
-  outputs = { self, nixpkgs, opencode, ... }: {
-    nixosConfigurations.myhostname = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = { inherit opencode; };
-      modules = [ ./configuration.nix ];
+### Prerequisites
+- **Nix**: Ensure Nix is installed with flakes enabled (add `experimental-features = nix-command flakes` to your `~/.config/nix/nix.conf` or system config).
+- **Direnv**: For automatic shell loading. On NixOS, this is enabled via Home Manager (see below). If not using Home Manager, install direnv globally with `nix-env -i direnv` or add it to your shell.
+- **Home Manager**: This project assumes you're using Home Manager for user-specific configurations (e.g., enabling direnv). If you're on NixOS, integrate it as shown in your system configuration (e.g., `/etc/nixos/configuration.nix`):
+  ```nix
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    users.<your-username> = { pkgs, ... }: {
+      programs.direnv = {
+        enable = true;
+        enableBashIntegration = true;  # Or your shell of choice
+        nix-direnv.enable = true;  # For flake support
+      };
+      home.stateVersion = "<your-version>";  # e.g., "25.11"
     };
   };
-}
-```
-Replace `"myhostname"` with your own system name.
+  ```
+  After updating your NixOS config, run `sudo nixos-rebuild switch` to apply changes. This sets up direnv to automatically hook into your shell (e.g., add `eval "$(direnv hook bash)"` to `~/.bashrc` if not auto-configured).
 
-#### 3. Add OpenCode CLI to systemPackages and Import the Input
-Edit `/etc/nixos/configuration.nix`:
-```nix
-{ pkgs, opencode, ... }:
-{
-  environment.systemPackages = with pkgs; [
-    # ... your apps ...
-    (opencode.packages.${pkgs.system}.default)
-  ];
-}
-```
+### Entering the Dev Shell
+1. Clone the repository:
+   ```
+   git clone <repo-url>
+   cd youtube-video
+   ```
 
-#### 4. Apply and Test
-```bash
-sudo nixos-rebuild switch --flake /etc/nixos
-opencode --version  # Should output CLI version if successful
-```
+2. **With Direnv (Recommended for Auto-Loading)**:
+   - Create a `.envrc` file in the project root (if not already present):
+     ```
+     use flake
+     ```
+   - Run `direnv allow` to approve it. Direnv will automatically load the Nix dev shell whenever you enter the directory.
+   - Verify: Run `echo $SHELL` or check if `bun --version` works without prefixing.
 
-**You can now use `opencode` globally, from any user account.**
+3. **Manual Entry (Without Direnv)**:
+   - Enter the dev shell manually:
+     ```
+     nix develop
+     ```
+   - This activates the environment with all tools (Bun, FFmpeg, Python packages, etc.).
 
-#### • User-only alternative:
-If you don't want to install globally, use:
-```bash
-nix profile install github:anomalyco/opencode
-```
+Once in the dev shell, you can run scripts as described below. If direnv is set up via Home Manager, the shell will load seamlessly on `cd` into the project.
 
-For more: [OpenCode Install Docs](https://opencode.ai)
+> **Note:** If you encounter issues with direnv not loading, ensure it's hooked into your shell profile (e.g., via Home Manager) and restart your terminal.
 
-To enter a dev shell with all tools available:
-```bash
-nix develop
-```
-
-### VSCode with Nix DevShell
-For a seamless VSCode experience with all flake-provided tools:
-
-1. Install [direnv](https://direnv.net/) system-wide via Nix.
-2. Install the [Direnv VSCode extension](https://marketplace.visualstudio.com/items?itemName=mkhl.direnv).
-3. Create `.envrc` in the project root with `use flake`.
-4. Run `direnv allow` to approve.
-5. Open the project in VSCode—the environment loads automatically.
-
-This provides Biome linting, TypeScript checking, and all devShell tools without manual `nix develop`.
-
-## 🏃‍♂️ Running Scripts (Bun/Flake)
-
-You can run your Bun scripts using the Nix flake app:
-```bash
-nix run .#bun -- src/batchTranscribe.ts
-```
-Or any Bun script:
-```bash
-nix run .#bun -- <filename>.ts
-```
-
-This ensures all necessary dependencies (ffmpeg, Python modules, Bun) are available at runtime.
-
-## 🔀 Alternative: Running Without Nix (System Bun)
-
-You can run this project outside Nix if you install all dependencies manually on your system:
-
-- **Bun** (JavaScript/TypeScript runtime): [Official install guide](https://bun.sh/)
-  - Quick install: `curl -fsSL https://bun.sh/install | bash` (Linux/macOS)
-- **ffmpeg**: Available via your OS package manager
-- **Python 3.13+** with these modules:
-  - `faster-whisper`
-  - `pysubs2`
-- **OpenCode CLI**: You must have the `opencode` CLI installed and available in your `PATH` for automated workflows (referenced e.g. in `src/generate-description.ts`). If you do not have it, consult your organization or platform for installation instructions.
-
-Install Python modules with:
-```bash
-pip install faster-whisper pysubs2
-```
-
-After installing dependencies, run scripts directly with Bun:
-```bash
-bun src/batchTranscribe.ts
-```
-Or
-```bash
-bun <filename>.ts
-```
+## Running Scripts
+- Foreground: `bun <filename>.ts`
+- Using flake app: `nix run .#bun -- <filename>.ts`
 
 > **Note:** Dependency setup is manual and may vary by OS. Ensure `ffmpeg`, Python, and `opencode` are in your `PATH` and callable from any terminal.
 
@@ -183,10 +121,11 @@ To run a script in the background and get notified when it finishes (using OpenC
 - Outputs are stored in the correct folders with robust error handling.
 
 ## 🔧 Troubleshooting
-- If you see errors about missing Bun or Python modules, ensure you're inside the dev shell (`nix develop`).
+- If you see errors about missing Bun or Python modules, ensure you're inside the dev shell (`nix develop` or via direnv).
 - For flake errors, make sure you have the latest Nix and your `flake.nix` provides `apps.bun` and `devShells.default` using shared `runtimeInputs`.
 - Foreground run errors: run scripts via `nix run .#bun -- script.ts`.
 - For background jobs, monitor notifications or request logs if troubleshooting is needed.
+- Direnv issues: Run `direnv status` to debug. Ensure Home Manager has enabled it correctly.
 
 ## 📝 Project Initialization
 This project was created using `bun init` in bun v1.3.5. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

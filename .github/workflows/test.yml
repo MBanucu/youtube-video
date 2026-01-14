@@ -31,7 +31,16 @@ jobs:
       - name: Install OpenCode CLI
         run: curl -fsSL https://opencode.ai/install | bash
 
+      - name: Verify OpenCode installation
+        run: |
+          if [ ! -f "$HOME/.opencode/bin/opencode" ]; then
+            echo "::error::OpenCode binary not found at $HOME/.opencode/bin/opencode"
+            exit 1
+          fi
+          echo "OpenCode version: $($HOME/.opencode/bin/opencode --version)"
+
       - name: Upload opencode artifact
+        if: hashFiles('$HOME/.opencode/**') != ''
         uses: actions/upload-artifact@v4
         with:
           name: opencode

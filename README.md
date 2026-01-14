@@ -27,6 +27,27 @@ A full automation toolkit for preparing, processing, and (soon) uploading video 
 - **Centralized, Cross-Platform Path Management**
   - `paths.ts`: Provides canonical paths for every batch/script action, ensuring a reproducible, cross-language workflow.
 
+## 🛡️ Code Quality and Best Practices
+
+This project enforces code quality through a combination of automated tools, pre-commit hooks, and continuous integration (CI) checks. These ensure consistent formatting, type safety, and clean codebases.
+
+- **Linting and Formatting**: Powered by [Biome](https://biomejs.dev/) (configured in `biome.json`). Run `bun run check` to lint, format, and fix issues. Biome is integrated into Bun via a wrapper in `flake.nix` for seamless usage.
+
+- **Type Checking**: Uses TypeScript (configured in `tsconfig.json`) for static type safety. Run `bun tsc --noEmit` to check types without emitting files.
+
+- **Unused Code and Dependency Detection**: [Knip](https://knip.dev/) (configured in `knip.jsonc`) identifies unused exports, files, and dependencies. Run `bun run knip` to scan the project.
+
+- **Pre-Commit Hooks**: Managed by [Lefthook](https://github.com/evilmartians/lefthook) (configured in `lefthook.yml`). Automatically runs Biome checks and TypeScript type checks on staged files before commits. Install hooks with `lefthook install` (Lefthook is included in the Nix dev shell).
+
+- **Continuous Integration (CI)**: GitHub Actions (in `.github/workflows/test.yml`) runs all checks on pushes and pull requests:
+  - Biome lint/format validation.
+  - TypeScript type checks.
+  - Knip scans.
+  - Unit tests (discovered dynamically via `discover-tests.ts`).
+  - The workflow fails if any checks don't pass, ensuring quality before merging.
+
+To contribute, ensure all checks pass locally before pushing. Use the Nix dev shell (`nix develop`) for a consistent environment.
+
 ---
 
 ## 🚀 Development Environment (Nix Flake)

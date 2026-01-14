@@ -3,11 +3,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import readline from 'node:readline'
-import type { Credentials, OAuth2Client } from 'google-auth-library'
+import type { Credentials } from 'google-auth-library'
+import { OAuth2Client } from 'google-auth-library'
 import { google } from 'googleapis'
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers'
 import { paths } from './paths' // Import centralized paths
 
-const OAuth2 = google.auth.OAuth2
+const OAuth2 = OAuth2Client
+
+interface Args {
+  credentials: string
+}
 
 interface ClientCredentials {
   installed: {
@@ -21,7 +28,7 @@ interface ClientCredentials {
 const SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
 
 // Path to store the OAuth token (add to .gitignore if not already)
-const TOKEN_PATH = path.join(process.cwd(), 'token.json')
+let TOKEN_PATH = path.join(process.cwd(), 'token.json')
 
 // YouTube video category ID (22 = People & Blogs; adjust as needed, e.g., 28 for Science & Technology)
 const CATEGORY_ID = '22'
@@ -138,12 +145,21 @@ async function uploadVideo(
  * Main function to batch upload split videos.
  */
 export async function main() {
+  const argv = yargs(hideBin(process.argv)).option('credentials', {
+    type: 'string',
+    alias: 'c',
+    description: 'Path to OAuth credentials.json file',
+    default: './credentials.json',
+    demandOption: false,
+  }).argv as Args
+
+  const credentialsPath = argv.credentials
+  const tokenPath = path.join(path.dirname(credentialsPath), 'token.json')
+  TOKEN_PATH = tokenPath
+
   try {
     // Load client secrets from credentials.json
-    const content = await fs.promises.readFile(
-      path.join(process.cwd(), 'credentials.json'),
-      'utf8',
-    )
+    const content = await fs.promises.readFile(credentialsPath, 'utf8')
     const credentials = JSON.parse(content)
 
     // Authorize the client

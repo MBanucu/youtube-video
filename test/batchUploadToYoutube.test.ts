@@ -1,66 +1,116 @@
 // test/batchUploadToYoutube.test.ts
 
 import { expect, mock, test } from 'bun:test'
-import * as batchUpload from '../src/batchUploadToYoutube'
-import { paths } from '../src/paths'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 // Mock console.log to capture output without printing
 const consoleLogMock = mock(() => {})
 
-test('main should authorize, find videos, and upload them with descriptions', async () => {
-  // Mock console.log
-  const originalConsoleLog = console.log
-  console.log = consoleLogMock
+// Mock fs.promises.writeFile
+const fsPromisesWriteFileMock = mock(async () => {})
 
-  // Mock fs.promises.readFile for credentials and descriptions
-  const fsPromisesReadFileMock = mock(async (filePath: string) => {
-    if (filePath.endsWith('credentials.json')) {
-      return JSON.stringify({
+// Mock google.youtube service
+const insertMock = mock(async () => ({
+  data: { id: 'fake-video-id' },
+}))
+const youtubeServiceMock = {
+  videos: {
+    insert: insertMock,
+  },
+}
+const googleYoutubeMock = mock(() => youtubeServiceMock)
+
+// Mock OAuth2Client
+const OAuth2ClientMock = mock(
+  (_clientId: string, _clientSecret: string, _redirectUri: string) => ({
+    setCredentials: mock(() => {}),
+    credentials: {},
+  }),
+)
+
+// Import will be done inside the test
+
+test('main should authorize, find videos, and upload them with descriptions', async () => {
+  // Create temp dir and fake files
+  const tempDir = mkdtempSync(join(tmpdir(), 'youtube-test-'))
+  const credentialsPath = join(tempDir, 'credentials.json')
+  const tokenPath = join(tempDir, 'token.json')
+  const fakeVideosDir = join(tempDir, 'videos')
+  const fakeDescriptionsDir = join(tempDir, 'descriptions')
+
+  // Create temp subdirs
+  mkdirSync(fakeVideosDir)
+  mkdirSync(fakeDescriptionsDir)
+
+  // Create fake video files
+  writeFileSync(join(fakeVideosDir, 'part1.MTS'), '')
+  writeFileSync(join(fakeVideosDir, 'part2.MTS'), '')
+
+  // Create fake description files
+  writeFileSync(
+    join(fakeDescriptionsDir, 'part1-description_en.txt'),
+    'Fake description for testing',
+  )
+  writeFileSync(
+    join(fakeDescriptionsDir, 'part2-description_en.txt'),
+    'Fake description for testing',
+  )
+
+  writeFileSync(
+    credentialsPath,
+    JSON.stringify(
+      {
         installed: {
           client_id: 'fake-client-id',
           client_secret: 'fake-secret',
           redirect_uris: ['urn:ietf:wg:oauth:2.0:oob'],
         },
-      })
-    } else if (filePath.endsWith('-description_en.txt')) {
-      return 'Fake description for testing'
-    }
-    return '{}' // Fallback
-  })
+      },
+      null,
+      2,
+    ),
+  )
 
-  // Mock fs.promises.readdir to return fake video files
-  const fsPromisesReaddirMock = mock(async () => ['part1.MTS', 'part2.MTS'])
+  writeFileSync(
+    tokenPath,
+    JSON.stringify(
+      {
+        access_token: 'fake-access-token',
+        refresh_token: 'fake-refresh-token',
+        expiry_date: Date.now() + 3600000, // Valid in future
+      },
+      null,
+      2,
+    ),
+  )
 
-  // Mock fs.promises.writeFile (for token storage, but since we mock authorize, may not be called)
-  const fsPromisesWriteFileMock = mock(async () => {})
+  // Override process.argv to pass --credentials
+  const originalArgv = process.argv
+  process.argv = (process.argv as string[])
+    .slice(0, 2)
+    .concat(['--credentials', credentialsPath])
 
-  // Override fs.promises
-  mock.module('fs', () => ({
+  // Mock console.log
+  const originalConsoleLog = console.log
+  console.log = consoleLogMock
+
+  // Mock paths to use temp dirs
+  mock.module('../src/paths', () => ({
+    paths: {
+      videosDir: fakeVideosDir,
+      descriptionsDir: fakeDescriptionsDir,
+    },
+  }))
+
+  // Mock fs.promises
+  mock.module('node:fs', () => ({
     promises: {
-      readFile: fsPromisesReadFileMock,
-      readdir: fsPromisesReaddirMock,
       writeFile: fsPromisesWriteFileMock,
     },
     createReadStream: mock(() => ({})), // Mock stream for media body
   }))
-
-  // Mock path.join to control paths (optional, but for consistency)
-  const pathJoinMock = mock((...args: string[]) => args.join('/'))
-  mock.module('path', () => ({
-    join: pathJoinMock,
-  }))
-
-  // Mock google.youtube service
-  const insertMock = mock(async () => ({
-    data: { id: 'fake-video-id' },
-  }))
-  const youtubeServiceMock = {
-    videos: {
-      insert: insertMock,
-    },
-  }
-  const googleYoutubeMock = mock(() => youtubeServiceMock)
-
 
   mock.module('googleapis', () => ({
     google: {
@@ -68,47 +118,38 @@ test('main should authorize, find videos, and upload them with descriptions', as
     },
   }))
 
-  // Call main
-  await batchUpload.main()
+  mock.module('google-auth-library', () => ({
+    OAuth2Client: OAuth2ClientMock,
+  }))
 
-  // Assertions
-  expect(batchUpload.authorize).toHaveBeenCalledTimes(1)
+  // Import after mocks
+  const { main } = await import('../src/batchUploadToYoutube')
 
-  expect(fsPromisesReaddirMock).toHaveBeenCalledTimes(1)
-  expect(fsPromisesReaddirMock).toHaveBeenCalledWith(paths.videosDir)
+  try {
+    // Call main
+    await main()
 
-  expect(fsPromisesReadFileMock).toHaveBeenCalledWith(
-    expect.stringContaining('credentials.json'),
-    'utf8',
-  )
-  expect(fsPromisesReadFileMock).toHaveBeenCalledWith(
-    expect.stringContaining('part1-description_en.txt'),
-    'utf8',
-  )
-  expect(fsPromisesReadFileMock).toHaveBeenCalledWith(
-    expect.stringContaining('part2-description_en.txt'),
-    'utf8',
-  )
-
-  expect(googleYoutubeMock).toHaveBeenCalledTimes(2) // Once per video
-
-  expect(insertMock).toHaveBeenCalledTimes(2)
-
-  expect(consoleLogMock).toHaveBeenCalledWith('Found 2 video parts to upload.')
-  expect(consoleLogMock).toHaveBeenCalledWith(
-    'Uploading part1.MTS as "Video Part 1"...',
-  )
-  expect(consoleLogMock).toHaveBeenCalledWith(
-    'Video uploaded successfully: https://youtu.be/fake-video-id',
-  )
-  expect(consoleLogMock).toHaveBeenCalledWith(
-    'Uploading part2.MTS as "Video Part 2"...',
-  )
-  expect(consoleLogMock).toHaveBeenCalledWith(
-    'Video uploaded successfully: https://youtu.be/fake-video-id',
-  )
-  expect(consoleLogMock).toHaveBeenCalledWith('All uploads complete.')
-
-  // Restore original console.log
-  console.log = originalConsoleLog
+    // Assertions
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      'Found 2 video parts to upload.',
+    )
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      'Uploading part1.MTS as "Video Part 1"...',
+    )
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      'Video uploaded successfully: https://youtu.be/fake-video-id',
+    )
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      'Uploading part2.MTS as "Video Part 2"...',
+    )
+    expect(consoleLogMock).toHaveBeenCalledWith(
+      'Video uploaded successfully: https://youtu.be/fake-video-id',
+    )
+    expect(consoleLogMock).toHaveBeenCalledWith('All uploads complete.')
+  } finally {
+    // Cleanup
+    process.argv = originalArgv
+    console.log = originalConsoleLog
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 })

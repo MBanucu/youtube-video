@@ -1,6 +1,7 @@
 import { readdir, writeFile, mkdir } from "fs/promises";
 import { join, resolve } from "path";
 import { paths } from "./paths";
+import { ffprobeDuration } from "./utils";
 
 /**
  * Concatenates multiple MTS video files into a single output file using ffmpeg.
@@ -19,19 +20,6 @@ export async function concatMts(options: {
   const outputFile = join(destDir, outputFileName);
   const myListPath = join(destDir, fileListName);
 
-  async function ffprobeDuration(file: string): Promise<number> {
-    const proc = Bun.spawn([
-      "ffprobe",
-      "-v", "error",
-      "-show_entries", "format=duration",
-      "-of", "default=noprint_wrappers=1:nokey=1",
-      file,
-    ], { stderr: "inherit" });
-    const out = await new Response(proc.stdout).text();
-    const val = parseFloat(out.trim());
-    if (isNaN(val)) throw new Error(`Unable to get duration for ${file}`);
-    return val;
-  }
   // List all .MTS files in sourceDir
   const files = (await readdir(sourceDir)).filter(f => f.endsWith(".MTS")).sort();
 

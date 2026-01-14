@@ -29,29 +29,24 @@
           pkgs.biome
           pkgs.lefthook
         ];
+
+        # Reusable function to create bun/bunx apps
+        makeBunApp =
+          name: execCmd:
+          flake-utils.lib.mkApp {
+            drv = pkgs.writeShellApplication {
+              inherit name;
+              inherit runtimeInputs;
+              text = ''
+                export BIOME_BINARY="${pkgs.biome}/bin/biome"
+                exec ${execCmd} "$@"
+              '';
+            };
+          };
       in
       {
-        apps.bun = flake-utils.lib.mkApp {
-          drv = pkgs.writeShellApplication {
-            name = "bun";
-            runtimeInputs = runtimeInputs;
-            text = ''
-              export BIOME_BINARY="${pkgs.biome}/bin/biome"
-              exec bun "$@"
-            '';
-          };
-        };
-
-        apps.bunx = flake-utils.lib.mkApp {
-          drv = pkgs.writeShellApplication {
-            name = "bunx";
-            runtimeInputs = runtimeInputs;
-            text = ''
-              export BIOME_BINARY="${pkgs.biome}/bin/biome"
-              exec bunx "$@"
-            '';
-          };
-        };
+        apps.bun = makeBunApp "bun" "bun";
+        apps.bunx = makeBunApp "bunx" "bunx";
 
         devShells.default = pkgs.mkShell {
           buildInputs = runtimeInputs;

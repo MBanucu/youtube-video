@@ -15,7 +15,7 @@ export async function concatMts(options: {
   const destDir = options.outputDir || paths.rootConcatDir;
   const outputFileName = options.outputFileName || "all_in_one.MTS";
   const outputFile = join(destDir, outputFileName);
-  const myListPath = join(destDir, "mylist.txt");
+  const myListPath = join(destDir, "concat-filelist.txt");
 
   async function ffprobeDuration(file: string): Promise<number> {
     const proc = Bun.spawn([
@@ -36,7 +36,7 @@ export async function concatMts(options: {
   // Prepare mylist.txt content
   const listContent = files.map(f => `file '${join(sourceDir, f)}'`).join("\n") + "\n";
   await writeFile(myListPath, listContent);
-  console.log("mylist.txt written:\n", listContent);
+  console.log("concat-filelist.txt written:\n", listContent);
 
   // Ensure output destination exists
   await mkdir(destDir, { recursive: true });

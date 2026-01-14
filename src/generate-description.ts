@@ -1,6 +1,6 @@
 import yargs from "yargs";
 import path from "path";
-import { paths } from "./paths";
+import { paths } from "@/paths";
 
 const argv = yargs(process.argv.slice(2))
   .usage("Usage: $0 --input <input.txt> --output <output.txt>")

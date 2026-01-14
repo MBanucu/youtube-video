@@ -1,7 +1,7 @@
 import { mkdir } from "fs/promises";
 import { join } from "path";
-import { paths } from "./paths";
-import { ffprobeDuration } from "./utils";
+import { paths } from "@/paths";
+import { ffprobeDuration } from "@/utils";
 
 /**
  * Splits a video file into equal-duration parts using ffmpeg.

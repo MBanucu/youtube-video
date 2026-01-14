@@ -1,7 +1,7 @@
 import { readdir } from "fs/promises";
 import { join } from "path";
-import { paths } from "./paths";
-import { ffprobeDuration } from "./utils";
+import { paths } from "@/paths";
+import { ffprobeDuration } from "@/utils";
 
 /**
  * Checks if the sum of split video part durations matches the original video duration.

@@ -13,12 +13,14 @@ export async function concatMts(
     outputDir?: string
     outputFileName?: string
     fileListName?: string
+    loglevel?: string
   } = {},
 ) {
   const sourceDir = options.sourceDir || join(process.cwd(), 'concat_src')
   const destDir = options.outputDir || paths.rootConcatDir
   const outputFileName = options.outputFileName || 'all_in_one.MTS'
   const fileListName = options.fileListName || 'concat-filelist.txt'
+  const loglevel = options.loglevel || 'error'
   const outputFile = join(destDir, outputFileName)
   const myListPath = join(destDir, fileListName)
 
@@ -38,6 +40,8 @@ export async function concatMts(
   // Run ffmpeg command
   const ffmpegCmd = [
     'ffmpeg',
+    '-loglevel',
+    loglevel,
     '-f',
     'concat',
     '-safe',
@@ -103,12 +107,19 @@ if (import.meta.main) {
         describe: 'Name of the file list for ffmpeg concat',
         type: 'string',
       })
+      .option('loglevel', {
+        describe:
+          'FFmpeg log level (quiet, panic, fatal, error, warning, info, verbose, debug, trace)',
+        type: 'string',
+        default: 'error',
+      })
       .help().argv
     await concatMts({
       sourceDir: argv['source-dir'],
       outputDir: argv['output-dir'],
       outputFileName: argv['output-file-name'],
       fileListName: argv['file-list-name'],
+      loglevel: argv.loglevel,
     })
   })().catch((err: unknown) => {
     console.error('Error:', err)

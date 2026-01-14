@@ -8,11 +8,17 @@ import { ffprobeDuration } from '@/utils'
  * @param options Configuration options
  */
 export async function splitVideoPrecise(
-  options: { srcFile?: string; outputDir?: string; parts?: number } = {},
+  options: {
+    srcFile?: string
+    outputDir?: string
+    parts?: number
+    loglevel?: string
+  } = {},
 ) {
   const srcFile = options.srcFile || join(paths.rootConcatDir, 'all_in_one.MTS')
   const outputDir = options.outputDir || paths.videosDir
   const parts = options.parts || 6
+  const loglevel = options.loglevel || 'error'
 
   await mkdir(outputDir, { recursive: true })
   const duration = await ffprobeDuration(srcFile)
@@ -28,6 +34,8 @@ export async function splitVideoPrecise(
 
     const ffmpegCmd = [
       'ffmpeg',
+      '-loglevel',
+      loglevel,
       '-ss',
       startStr,
       '-i',
@@ -73,11 +81,18 @@ if (import.meta.main) {
         describe: 'Number of parts to split into',
         type: 'number',
       })
+      .option('loglevel', {
+        describe:
+          'FFmpeg log level (quiet, panic, fatal, error, warning, info, verbose, debug, trace)',
+        type: 'string',
+        default: 'error',
+      })
       .help().argv
     await splitVideoPrecise({
       srcFile: argv['src-file'],
       outputDir: argv['output-dir'],
       parts: argv.parts,
+      loglevel: argv.loglevel,
     })
   })().catch((err: unknown) => {
     console.error('Error:', err)

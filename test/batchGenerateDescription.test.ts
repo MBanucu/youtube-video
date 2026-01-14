@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync, rmSync } from "fs";
 import { join, resolve } from "path";
 
 // Import the functions
-import { batchGenerateDescriptions } from "./batchGenerateDescription";
+import { batchGenerateDescriptions } from "../src/batchGenerateDescription";
 
 
 test("batchGenerateDescriptions - processes txt files to descriptions", async () => {

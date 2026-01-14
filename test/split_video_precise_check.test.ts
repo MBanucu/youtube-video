@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
-import { splitVideoPrecise } from "./split_video_precise";
-import { splitVideoPreciseCheck } from "./split_video_precise_check";
+import { splitVideoPrecise } from "../src/split_video_precise";
+import { splitVideoPreciseCheck } from "../src/split_video_precise_check";
 
 test("splitVideoPreciseCheck - verifies split parts match original duration", async () => {
   const srcFile = join("testdata", "01 - before24.MTS");

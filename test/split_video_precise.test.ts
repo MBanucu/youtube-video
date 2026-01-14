@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { join, resolve } from "path";
-import { splitVideoPrecise } from "./split_video_precise";
+import { splitVideoPrecise } from "../src/split_video_precise";
 
 test("splitVideoPrecise - splits MTS file into parts", async () => {
   const srcFile = join("testdata", "01 - before24.MTS");

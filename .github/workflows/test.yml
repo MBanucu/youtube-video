@@ -12,7 +12,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -25,6 +25,36 @@ jobs:
           MATRIX=$(bun discover-tests.ts)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json', '**/bunfig.toml') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Install Bun dependencies
+        run: bun ci
+
+      - name: Run Biome check
+        run: bunx biome check  # Exits non-zero if lint/format issues found (no --write to avoid auto-fixing in CI)
+
+      - name: Run TypeScript type check
+        run: bun tsc --noEmit
+
+      - name: Run Knip (unused code/deps check)
+        run: bun run knip
+
   test:
     needs: discover-tests
     runs-on: ubuntu-latest
@@ -34,7 +64,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -52,7 +82,7 @@ jobs:
         run: bun ci
 
       - name: Setup Python 3.13
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: 'pip'
@@ -76,6 +106,12 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
+      - name: Get latest FFmpeg release metadata
+        id: ffmpeg-release
+        run: |
+          PUBLISHED_AT=$(curl -s https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest | jq -r '.published_at' | sed 's/[^a-zA-Z0-9]/-/g')
+          echo "published_at=$PUBLISHED_AT" >> $GITHUB_OUTPUT
+
       - name: Cache FFmpeg BtbN build
         uses: actions/cache@v4
         id: cache-ffmpeg
@@ -83,7 +119,7 @@ jobs:
           path: |
             ~/.local/bin/ffmpeg
             ~/.local/bin/ffprobe
-          key: ${{ runner.os }}-ffmpeg-btbn-master-latest
+          key: ${{ runner.os }}-ffmpeg-btbn-${{ steps.ffmpeg-release.outputs.published_at }}
 
       - name: Setup FFmpeg
         if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
@@ -109,15 +145,15 @@ jobs:
   tests-complete:
     name: tests-complete
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, lint]  # Now depends on both test and lint
     if: always()
     steps:
       - name: Check test outcome
         run: |
-          if [[ "${{ needs.test.result }}" == "success" || "${{ needs.test.result }}" == "skipped" ]]; then
-            echo "Tests passed or no tests were discovered → OK"
+          if [[ "${{ needs.test.result }}" == "success" || "${{ needs.test.result }}" == "skipped" ]] && [[ "${{ needs.lint.result }}" == "success" || "${{ needs.lint.result }}" == "skipped" ]]; then
+            echo "Tests and lint passed or no tests were discovered → OK"
             exit 0
           else
-            echo "::error :: Tests did not succeed (result = ${{ needs.test.result }})"
+            echo "::error :: Tests or lint did not succeed (test result = ${{ needs.test.result }}, lint result = ${{ needs.lint.result }})"
             exit 1
           fi

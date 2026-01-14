@@ -105,3 +105,19 @@ jobs:
         run: |
           . .venv/bin/activate
           bun test --concurrent ${{ matrix.test-file }}
+
+  tests-complete:
+    name: tests-complete
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    steps:
+      - name: Check test outcome
+        run: |
+          if [[ "${{ needs.test.result }}" == "success" || "${{ needs.test.result }}" == "skipped" ]]; then
+            echo "Tests passed or no tests were discovered → OK"
+            exit 0
+          else
+            echo "::error :: Tests did not succeed (result = ${{ needs.test.result }})"
+            exit 1
+          fi

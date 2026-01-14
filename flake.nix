@@ -22,29 +22,42 @@
             pysubs2
           ];
         pythonEnv = pkgs.python313.withPackages pythonPackages;
+
+        # Wrapped bun/bunx with BIOME_BINARY set automatically
+        wrappedBun = pkgs.symlinkJoin {
+          name = "wrapped-bun";
+          paths = [ pkgs.bun ];
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          postBuild = ''
+            wrapProgram $out/bin/bun --set BIOME_BINARY "${pkgs.biome}/bin/biome"
+            if [ -e $out/bin/bunx ]; then
+              wrapProgram $out/bin/bunx --set BIOME_BINARY "${pkgs.biome}/bin/biome"
+            else
+              ln -s $out/bin/bun $out/bin/bunx
+              wrapProgram $out/bin/bunx --set BIOME_BINARY "${pkgs.biome}/bin/biome"
+            fi
+          '';
+        };
+
         runtimeInputs = [
-          pkgs.bun
+          wrappedBun # Use wrapped version instead of pkgs.bun
           pkgs.ffmpeg
           pythonEnv
           pkgs.biome
           pkgs.lefthook
         ];
 
-        # Extracted shared export line
-        biomeExport = ''export BIOME_BINARY="${pkgs.biome}/bin/biome"'';
-
-        # Reusable function to create bun/bunx apps
-        makeBunApp = name: execCmd:
+        # Reusable function to create bun/bunx apps (no export needed now)
+        makeBunApp =
+          name: execCmd:
           flake-utils.lib.mkApp {
             drv = pkgs.writeShellApplication {
               inherit name;
               inherit runtimeInputs;
               text = ''
-                ${biomeExport}
                 exec ${execCmd} "$@"
               '';
             };
-          };
           };
       in
       {
@@ -53,7 +66,7 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = runtimeInputs;
-          shellHook = biomeExport;
+          # No shellHook needed anymore
         };
       }
     );

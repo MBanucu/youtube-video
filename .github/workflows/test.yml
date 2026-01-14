@@ -25,6 +25,19 @@ jobs:
           MATRIX=$(bun discover-tests.ts)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
+  install-opencode:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OpenCode CLI
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Upload opencode artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode
+          path: ~/.opencode
+          retention-days: 1
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -56,7 +69,7 @@ jobs:
         run: bun run knip
 
   test:
-    needs: discover-tests
+    needs: [discover-tests, install-opencode]
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
@@ -87,8 +100,14 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
 
-      - name: Install OpenCode CLI
-        run: curl -fsSL https://opencode.ai/install | bash
+      - name: Download opencode artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: opencode
+          path: ~/.opencode
+
+      - name: Ensure OpenCode PATH
+        run: echo "$HOME/.opencode/bin" >> $GITHUB_PATH
 
       - name: Cache Python venv
         uses: actions/cache@v4

@@ -77,14 +77,18 @@ export class YouTubeBatchUploader {
     await Bun.write(this.tokenPath, JSON.stringify(token))
   }
 
-  async initializeAuth(): Promise<OAuth2Client> {
-    let auth = this.auth
-    if (auth) {
-      return auth
+  async getAuth(): Promise<OAuth2Client> {
+    const auth = this.auth
+    if (!auth) {
+      return await this.initializeAuth()
     }
+    return auth
+  }
+
+  async initializeAuth(): Promise<OAuth2Client> {
     const content = await Bun.file(this.options.credentialsPath).text()
     const credentials = JSON.parse(content)
-    auth = await this.authorize(credentials)
+    const auth = await this.authorize(credentials)
     this.auth = auth
     return auth
   }
@@ -152,7 +156,7 @@ export class YouTubeBatchUploader {
   ): Promise<string> {
     const service = google.youtube({
       version: 'v3',
-      auth: await this.initializeAuth(),
+      auth: await this.getAuth(),
     })
 
     // biome-ignore lint/suspicious/noExplicitAny: Google API response type is complex

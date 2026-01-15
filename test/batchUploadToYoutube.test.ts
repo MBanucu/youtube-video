@@ -33,9 +33,6 @@ mock.module('google-auth-library', () => ({
 test(
   'main should authorize, find videos, filter/sort correctly, load descriptions, and upload with correct parameters',
   async () => {
-    // Use shared server with test isolation
-    const fakeServer = sharedFakeGoogleServer
-
     // Create temp dir and fake files
     const tempDir = mkdtempSync(join(tmpdir(), 'youtube-test-'))
     const credentialsPath = join(tempDir, 'credentials.json')
@@ -99,15 +96,11 @@ test(
         privacyStatus: 'private',
         verifyUploads: true,
       })
-      await uploader.uploadBatch()
+      const uploadResponses = await uploader.uploadBatch()
 
       // === Strong assertions ===
       // Verify specific videos were uploaded with correct properties
-      const uploadedVideoIds = fakeServer.getAllVideoIds()
-
-      // Use list API like verification does
-      const listResponse = await fakeServer.list({ id: uploadedVideoIds })
-      const uploadedVideos = listResponse.data.items || []
+      const uploadedVideos = uploadResponses.map((response) => response.data)
 
       // Check that we have the expected videos by their properties
       const videosPart1 = uploadedVideos.filter(
@@ -201,14 +194,10 @@ test(
         retryDelay: 10,
         verifyUploads: true,
       })
-      await uploader.uploadBatch()
+      const uploadResponses = await uploader.uploadBatch()
 
       // Verify the video was uploaded after retries
-      const uploadedVideoIds = fakeServer.getAllVideoIds()
-
-      // Use list API to verify the uploaded video
-      const listResponse = await fakeServer.list({ id: uploadedVideoIds })
-      const uploadedVideos = listResponse.data.items || []
+      const uploadedVideos = uploadResponses.map((response) => response.data)
 
       // Find the video with empty description specifically
       const video = uploadedVideos.find(

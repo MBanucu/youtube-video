@@ -1,6 +1,7 @@
 // test/verifyYoutubeUpload.test.ts
 
 import { expect, mock, test } from 'bun:test'
+import type { youtube_v3 } from 'googleapis'
 import { sharedFakeGoogleServer } from './fakeGoogleServer'
 
 // Mock setup
@@ -27,15 +28,15 @@ test('verifyVideo throws error when video is null in response items', async () =
 
   // Override the list method to return an array with null as first item
   const originalList = sharedFakeGoogleServer.list.bind(sharedFakeGoogleServer)
-  // biome-ignore lint/suspicious/noExplicitAny: Mock implementation
   mockGoogleService.videos.list = mock(() =>
     Promise.resolve({
       data: {
-        items: [null], // items has length 1 but first item is null
+        items: [null as youtube_v3.Schema$Video | null], // items has length 1 but first item is null
       },
-    } as any),
+    } as youtube_v3.Schema$VideoListResponse),
   )
 
+  // biome-ignore lint/suspicious/noExplicitAny: Test mock OAuth client
   const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as any)
   const fakeVideoId = 'fake-video-id'
 

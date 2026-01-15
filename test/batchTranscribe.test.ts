@@ -3,7 +3,11 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { batchTranscribe } from '@/batchTranscribe'
 
-test(
+// Conditional test execution for performance-heavy tests
+// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for env vars
+const runHeavyTest = process.env['CI'] ? test.concurrent : test.skip
+
+runHeavyTest(
   'batchTranscribe - processes MTS files to SRT',
   async () => {
     const tmpAudioDir = './tmp/audio'

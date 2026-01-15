@@ -10,8 +10,8 @@ test('verifyVideo throws error when video is not found', async () => {
   const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as OAuth2Client)
   const fakeVideoId = 'non-existent-video-id'
 
-  try {
-    await verifier.verifyVideo(
+  await expect(
+    verifier.verifyVideo(
       fakeVideoId,
       {
         title: 'Test Title',
@@ -21,14 +21,8 @@ test('verifyVideo throws error when video is not found', async () => {
       },
       1,
       10,
-    ) // maxAttempts=1, delayMs=10 to speed up test
-    throw new Error('Expected error to be thrown')
-  } catch (error: unknown) {
-    expect(error).toBeInstanceOf(Error)
-    expect((error as Error).message).toBe(
-      `Video ${fakeVideoId} not found on channel`,
-    )
-  }
+    ), // maxAttempts=1, delayMs=10 to speed up test
+  ).rejects.toThrowError(`Video ${fakeVideoId} not found on channel`)
 })
 
 // Mock setup - minimal OAuth2Client for testing

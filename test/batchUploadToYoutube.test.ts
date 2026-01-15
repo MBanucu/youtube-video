@@ -5,25 +5,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// Mock google.youtube service
-// biome-ignore lint/suspicious/noExplicitAny: any allows flexible mocking of stream body
-const insertMock = mock(async (params: { media?: { body?: any } }) => {
-  const { media } = params
-  if (media?.body) {
-    // Drain the stream to simulate consumption and ensure file closure
-    await new Promise((resolve, reject) => {
-      media.body.on('error', reject)
-      media.body.on('end', resolve)
-      media.body.resume() // Start flowing data to trigger 'end'
-    })
-  }
-  return { data: { id: 'fake-video-id' } }
-})
-const youtubeServiceMock = {
-  videos: {
-    insert: insertMock,
-  },
-}
 // Import will be done inside the test
 
 test(
@@ -91,6 +72,24 @@ test(
     )
 
     // Mock google.youtube service
+    // biome-ignore lint/suspicious/noExplicitAny: any allows flexible mocking of stream body
+    const insertMock = mock(async (params: { media?: { body?: any } }) => {
+      const { media } = params
+      if (media?.body) {
+        // Drain the stream to simulate consumption and ensure file closure
+        await new Promise((resolve, reject) => {
+          media.body.on('error', reject)
+          media.body.on('end', resolve)
+          media.body.resume() // Start flowing data to trigger 'end'
+        })
+      }
+      return { data: { id: 'fake-video-id' } }
+    })
+    const youtubeServiceMock = {
+      videos: {
+        insert: insertMock,
+      },
+    }
     const googleYoutubeMock = mock(() => youtubeServiceMock)
 
     mock.module('googleapis', () => ({

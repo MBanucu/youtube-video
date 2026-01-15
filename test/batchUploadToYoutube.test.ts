@@ -5,9 +5,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// Mock console.log to capture output without printing
-const consoleLogMock = mock(() => {})
-
 // Mock google.youtube service
 // biome-ignore lint/suspicious/noExplicitAny: any allows flexible mocking of stream body
 const insertMock = mock(async (params: { media?: { body?: any } }) => {
@@ -42,6 +39,9 @@ const OAuth2ClientMock = mock(
 test(
   'main should authorize, find videos, and upload them with descriptions',
   async () => {
+    // Mock console.log to capture output without printing
+    const consoleLogMock = mock(() => {})
+
     // Create temp dir and fake files
     const tempDir = mkdtempSync(join(tmpdir(), 'youtube-test-'))
     const credentialsPath = join(tempDir, 'credentials.json')
@@ -155,6 +155,9 @@ test(
 test(
   'should retry uploads on failure with exponential backoff',
   async () => {
+    // Mock console.log to capture output without printing
+    const consoleLogMock = mock(() => {})
+
     let callCount = 0
     const failingInsertMock = mock(
       // biome-ignore lint/suspicious/noExplicitAny: Mock body type

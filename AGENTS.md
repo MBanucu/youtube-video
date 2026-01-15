@@ -264,3 +264,9 @@ interface BatchUploadOptions {
 - Consistent use of `Promise<T>` return types
 - Conditional test execution based on environment
 - Use of Bun's optimized APIs (Bun.file, Bun.write, Bun.spawn)
+
+### AI Assistant Integration
+- **Cursor Rules**: No specific Cursor rules configured (.cursor/rules/ or .cursorrules not found)
+- **GitHub Copilot Instructions**: No custom Copilot instructions (.github/copilot-instructions.md not found)
+- Use this AGENTS.md as the primary guide for code style and development practices
+- Follow the established patterns for new contributions to maintain consistency

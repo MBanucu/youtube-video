@@ -4,7 +4,6 @@ import { expect, mock, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Readable } from 'node:stream'
 
 // Mock console.log to capture output without printing
 const consoleLogMock = mock(() => {})
@@ -99,23 +98,6 @@ test(
     // Mock console.log
     const originalConsoleLog = console.log
     console.log = consoleLogMock
-
-    // Pre-import original fs for sync mock
-    const originalFs = await import('node:fs')
-
-    // Mock paths to use temp dirs
-    mock.module('../src/paths', () => ({
-      paths: {
-        videosDir: fakeVideosDir,
-        descriptionsDir: fakeDescriptionsDir,
-      },
-    }))
-
-    // Mock fs.createReadStream to avoid real file opens and potential race with cleanup
-    mock.module('fs', () => ({
-      ...originalFs,
-      createReadStream: mock((_path: string) => Readable.from([])), // Fake empty stream; no real open
-    }))
 
     mock.module('googleapis', () => ({
       google: {

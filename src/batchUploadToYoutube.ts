@@ -226,6 +226,7 @@ export class YouTubeBatchUploader {
       const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
 
       console.log(`Uploading ${file} as "${title}"...`)
+      // biome-ignore lint/style/noNonNullAssertion: auth is initialized above
       await uploadVideo(
         this.auth!,
         videoPath,

@@ -3,6 +3,7 @@ import path from 'node:path'
 import readline from 'node:readline'
 import type { Credentials } from 'google-auth-library'
 import { OAuth2Client } from 'google-auth-library'
+import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
 import { paths } from './paths'
 import type { BatchUploadOptions, ClientCredentials } from './types'
@@ -170,11 +171,11 @@ export class YouTubeBatchUploader {
       auth: await this.getAuth(),
     })
 
-    // biome-ignore lint/suspicious/noExplicitAny: Google API response type is complex
-    let response: any
+    // Type assertion needed due to complex Google API response types with Bun/Node differences
+    let response: { data: youtube_v3.Schema$Video } | undefined
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
-        response = await service.videos.insert({
+        response = (await service.videos.insert({
           part: ['snippet', 'status'],
           requestBody: {
             snippet: {
@@ -189,7 +190,7 @@ export class YouTubeBatchUploader {
           media: {
             body: fs.createReadStream(videoPath),
           },
-        })
+        })) as { data: youtube_v3.Schema$Video }
         break
       } catch (error) {
         if (attempt < this.maxRetries) {

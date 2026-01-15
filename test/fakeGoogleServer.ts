@@ -2,6 +2,7 @@
 // Fake YouTube server that stores uploaded videos and serves them via list API
 
 import type { youtube_v3 } from 'googleapis'
+import type { GaxiosResponseWithHTTP2 } from 'googleapis-common'
 
 // Use actual YouTube API types
 type VideoData = youtube_v3.Schema$Video
@@ -16,8 +17,9 @@ export class FakeGoogleServer {
   }
 
   // Simulate videos.insert
-  // biome-ignore lint/suspicious/noExplicitAny: Mock implementation using any for flexibility
-  async insert(params: any): Promise<any> {
+  async insert(
+    params: youtube_v3.Params$Resource$Videos$Insert,
+  ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
     // Handle configured failures
     if (this.insertFailureCount > 0) {
       this.insertFailureCount--
@@ -26,10 +28,10 @@ export class FakeGoogleServer {
 
     // Drain stream if present (like real YouTube API)
     if (params.media?.body) {
-      await new Promise((resolve, reject) => {
-        params.media.body.on('error', reject)
-        params.media.body.on('end', resolve)
-        params.media.body.resume()
+      await new Promise<void>((resolve, reject) => {
+        params.media!.body.on('error', reject)
+        params.media!.body.on('end', resolve)
+        params.media!.body.resume()
       })
     }
 
@@ -40,18 +42,26 @@ export class FakeGoogleServer {
     const videoData: VideoData = {
       id: videoId,
       snippet: {
-        title: params.requestBody.snippet.title,
-        description: params.requestBody.snippet.description,
-        categoryId: params.requestBody.snippet.categoryId,
+        title: params.requestBody?.snippet?.title || '',
+        description: params.requestBody?.snippet?.description || '',
+        categoryId: params.requestBody?.snippet?.categoryId || '',
       },
       status: {
-        privacyStatus: params.requestBody.status.privacyStatus,
+        privacyStatus: params.requestBody?.status?.privacyStatus || 'private',
       },
     }
 
     this.videos.set(videoId, videoData)
 
-    return { data: { id: videoId } }
+    // Return a proper GaxiosResponseWithHTTP2-like object
+    return {
+      data: videoData,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+      ok: true,
+    } as GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>
   }
 
   // Simulate videos.list

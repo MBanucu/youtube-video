@@ -1,27 +1,29 @@
 // test/fakeGoogleServer.ts
 // Fake YouTube server that stores uploaded videos and serves them via list API
 
-export interface VideoSnippet {
-  title: string
-  description: string
-  categoryId: string
-}
+import type { youtube_v3 } from 'googleapis'
 
-export interface VideoStatus {
-  privacyStatus: 'public' | 'private' | 'unlisted'
-}
-
-export interface VideoData {
-  id: string
-  snippet: VideoSnippet
-  status: VideoStatus
-}
+// Use actual YouTube API types
+type VideoData = youtube_v3.Schema$Video
 
 export class FakeGoogleServer {
   private videos = new Map<string, VideoData>()
+  private insertFailureCount: number = 0
+
+  // Configure how many insert calls should fail before succeeding
+  setInsertFailures(count: number): void {
+    this.insertFailureCount = count
+  }
 
   // Simulate videos.insert
+  // biome-ignore lint/suspicious/noExplicitAny: Mock implementation using any for flexibility
   async insert(params: any): Promise<any> {
+    // Handle configured failures
+    if (this.insertFailureCount > 0) {
+      this.insertFailureCount--
+      throw new Error('Network error')
+    }
+
     // Drain stream if present (like real YouTube API)
     if (params.media?.body) {
       await new Promise((resolve, reject) => {
@@ -53,6 +55,7 @@ export class FakeGoogleServer {
   }
 
   // Simulate videos.list
+  // biome-ignore lint/suspicious/noExplicitAny: Mock implementation using any for flexibility
   async list(params: any): Promise<any> {
     const requestedIds = params.id || []
     const items: VideoData[] = []
@@ -88,3 +91,6 @@ export class FakeGoogleServer {
     this.videos.clear()
   }
 }
+
+// Export a shared instance for concurrent testing
+export const sharedFakeGoogleServer = new FakeGoogleServer()

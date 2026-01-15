@@ -87,10 +87,10 @@ test(
       }),
     )
 
-    const { batchUploadToYoutube } = await import('../src/batchUploadToYoutube')
+    const { YouTubeBatchUploader } = await import('../src/batchUploadToYoutube')
 
     try {
-      await batchUploadToYoutube({
+      const uploader = new YouTubeBatchUploader({
         credentialsPath,
         videosDir: fakeVideosDir,
         descriptionsDir: fakeDescriptionsDir,
@@ -99,6 +99,7 @@ test(
         privacyStatus: 'private',
         verifyUploads: true,
       })
+      await uploader.uploadBatch()
 
       // === Strong assertions ===
       // Verify specific videos were uploaded with correct properties
@@ -188,10 +189,10 @@ test(
       }),
     )
 
-    const { batchUploadToYoutube } = await import('../src/batchUploadToYoutube')
+    const { YouTubeBatchUploader } = await import('../src/batchUploadToYoutube')
 
     try {
-      await batchUploadToYoutube({
+      const uploader = new YouTubeBatchUploader({
         credentialsPath,
         videosDir: fakeVideosDir,
         descriptionsDir: fakeDescriptionsDir,
@@ -200,6 +201,7 @@ test(
         retryDelay: 10,
         verifyUploads: true,
       })
+      await uploader.uploadBatch()
 
       // Verify the video was uploaded after retries
       const uploadedVideoIds = fakeServer.getAllVideoIds()

@@ -5,6 +5,7 @@ import type { Credentials } from 'google-auth-library'
 import { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
+import type { GaxiosResponseWithHTTP2 } from 'googleapis-common'
 
 type YouTubeService = ReturnType<typeof google.youtube>
 
@@ -162,7 +163,7 @@ export class YouTubeBatchUploader {
     description: string,
     categoryId: string,
     privacyStatus: string,
-  ): Promise<{ data: youtube_v3.Schema$Video }> {
+  ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         const response = await service.videos.insert({

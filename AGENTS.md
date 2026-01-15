@@ -37,6 +37,13 @@ bun test --concurrent <file>  # Run specific test with concurrent execution
 
 **Running Single Tests**: Use `bun test <path/to/testfile.test.ts>` to run individual test files. For performance-heavy tests like transcription, they are conditionally skipped locally (run only in CI) using environment checks.
 
+**Conditional Test Execution**: Use `runHeavyTest` from `test/utils.ts` for tests that should run concurrently in CI but skip locally:
+```typescript
+import { runHeavyTest } from './utils'
+
+runHeavyTest('test name', async () => { ... }, { timeout: 300000 })
+```
+
 ### CI Pipeline
 The project uses GitHub Actions with:
 - Automated test matrix (one job per test file)
@@ -130,7 +137,7 @@ export function extractWavFromVideo(inputVideo: string, outputWav: string): bool
 
 ### Testing Patterns
 ```typescript
-import { expect, test } from 'bun:test'
+import { expect, mock, test } from 'bun:test'
 import { join } from 'node:path'
 
 // Conditional test execution for performance-heavy tests
@@ -154,12 +161,12 @@ runHeavyTest('functionName - describes what it does', async () => {
 ```
 
 **Test Organization**:
-- Use `test.concurrent()` for performance (parallel execution)
+- Use `runHeavyTest` for performance-heavy tests (imports from `test/utils.ts`)
 - Place test data in `testdata/` directory
 - Use temporary directories for outputs
 - Always clean up test artifacts
 - Set appropriate timeouts for async operations
-- Skip performance-heavy tests locally using `process.env['CI']` checks
+- Mock external APIs and file operations appropriately
 
 ### File Structure
 ```
@@ -171,6 +178,7 @@ src/           # Main source code
 
 test/          # Test files
   *.test.ts    # Unit tests
+  utils.ts     # Test utilities (runHeavyTest)
 
 testdata/      # Test data files
   *.MTS        # Video test files
@@ -217,6 +225,24 @@ Follow conventional commits:
 3. **Type check**: Run `bun tsc --noEmit` for type safety
 4. **Unused code**: Run `bun run knip` to check for dead code
 5. **Commit**: Use conventional commit format with detailed body
+
+### Git Hooks (Lefthook)
+- **Pre-commit**: Biome formatting, TypeScript checking, knip, fast tests
+- **Pre-push**: Full linting, full TypeScript, knip, full tests
+- **Commit-msg**: Commitlint for conventional commits
+
+### Configurable Options
+The `batchUploadToYoutube` function accepts configurable options:
+```typescript
+interface BatchUploadOptions {
+  credentialsPath: string
+  videosDir?: string
+  descriptionsDir?: string
+  tokenPath?: string      // Custom token file location
+  categoryId?: string     // YouTube category ID
+  privacyStatus?: string  // 'public', 'private', 'unlisted'
+}
+```
 
 ### External Dependencies
 - **FFmpeg**: Video/audio processing

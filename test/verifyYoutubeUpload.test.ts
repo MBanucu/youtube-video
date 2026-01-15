@@ -2,9 +2,34 @@
 
 import { expect, mock, test } from 'bun:test'
 import type { OAuth2Client } from 'google-auth-library'
-import type { youtube_v3 } from 'googleapis'
-import type { GaxiosResponseWithHTTP2 } from 'googleapis-common'
 import { sharedFakeGoogleServer } from './fakeGoogleServer'
+
+test('verifyVideo throws error when video is not found', async () => {
+  const { YouTubeUploadVerifier } = await import('../src/verifyYoutubeUpload')
+
+  const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as OAuth2Client)
+  const fakeVideoId = 'non-existent-video-id'
+
+  try {
+    await verifier.verifyVideo(
+      fakeVideoId,
+      {
+        title: 'Test Title',
+        description: 'Test Description',
+        categoryId: '22',
+        privacyStatus: 'private',
+      },
+      1,
+      10,
+    ) // maxAttempts=1, delayMs=10 to speed up test
+    throw new Error('Expected error to be thrown')
+  } catch (error) {
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe(
+      `Video ${fakeVideoId} not found on channel`,
+    )
+  }
+})
 
 // Mock setup - minimal OAuth2Client for testing
 const mockOAuth2Client = mock(
@@ -26,54 +51,3 @@ mock.module('googleapis', () => ({
 mock.module('google-auth-library', () => ({
   OAuth2Client: mockOAuth2Client,
 }))
-
-test('verifyVideo throws error when video is null in response items', async () => {
-  const { YouTubeUploadVerifier } = await import('../src/verifyYoutubeUpload')
-
-  // Override the list method to return an array with null as first item
-  const originalList = sharedFakeGoogleServer.list.bind(sharedFakeGoogleServer)
-  mockGoogleService.videos.list = mock(() =>
-    Promise.resolve({
-      data: {
-        items: [null as youtube_v3.Schema$Video | null], // items has length 1 but first item is null
-        kind: 'youtube#videoListResponse',
-        etag: '"etag"',
-        pageInfo: {
-          totalResults: 1,
-          resultsPerPage: 1,
-        },
-      },
-      status: 200,
-      statusText: 'OK',
-      headers: {},
-      config: {},
-      ok: true,
-    } as GaxiosResponseWithHTTP2<youtube_v3.Schema$VideoListResponse>),
-  )
-
-  const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as OAuth2Client)
-  const fakeVideoId = 'fake-video-id'
-
-  try {
-    await verifier.verifyVideo(
-      fakeVideoId,
-      {
-        title: 'Test Title',
-        description: 'Test Description',
-        categoryId: '22',
-        privacyStatus: 'private',
-      },
-      1,
-      10,
-    ) // maxAttempts=1, delayMs=10 to speed up test
-    throw new Error('Expected error to be thrown')
-  } catch (error) {
-    expect(error).toBeInstanceOf(Error)
-    expect((error as Error).message).toBe(
-      `Video ${fakeVideoId} not found in response`,
-    )
-  } finally {
-    // Restore original list method
-    mockGoogleService.videos.list = originalList
-  }
-})

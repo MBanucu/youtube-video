@@ -25,7 +25,11 @@ export class YouTubeUploadVerifier {
     videoId: string,
     maxAttempts: number,
     delayMs: number,
-  ): Promise<youtube_v3.Schema$Video> {
+  ): Promise<{
+    video: youtube_v3.Schema$Video
+    snippet: NonNullable<youtube_v3.Schema$Video['snippet']>
+    status: NonNullable<youtube_v3.Schema$Video['status']>
+  }> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const response = await service.videos.list({
@@ -46,7 +50,11 @@ export class YouTubeUploadVerifier {
           throw new Error(`Video ${videoId} missing snippet or status`)
         }
 
-        return video
+        return {
+          video,
+          snippet: video.snippet,
+          status: video.status,
+        }
       } catch (error: unknown) {
         if (attempt === maxAttempts) {
           throw error
@@ -73,7 +81,7 @@ export class YouTubeUploadVerifier {
     })
 
     // First, try to fetch the video data (retry on network/API errors)
-    const videoData = await this.fetchVideoData(
+    const { snippet, status } = await this.fetchVideoData(
       service,
       videoId,
       maxAttempts,
@@ -81,13 +89,6 @@ export class YouTubeUploadVerifier {
     )
 
     // Now validate the video data (no retries for validation errors)
-    // We already verified snippet and status exist in the fetch phase
-    const snippet = videoData.snippet as NonNullable<
-      youtube_v3.Schema$Video['snippet']
-    >
-    const status = videoData.status as NonNullable<
-      youtube_v3.Schema$Video['status']
-    >
 
     if (snippet.title !== expected.title) {
       throw new Error(

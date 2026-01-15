@@ -241,8 +241,12 @@ interface BatchUploadOptions {
   tokenPath?: string      // Custom token file location
   categoryId?: string     // YouTube category ID
   privacyStatus?: string  // 'public', 'private', 'unlisted'
+  maxRetries?: number     // Maximum number of upload retries (default: 3)
+  retryDelay?: number     // Base delay in ms for exponential backoff (default: 1000)
 }
 ```
+
+**Retry Logic**: Uploads use exponential backoff retry on failure to handle network issues. The delay increases as 2^attempt * retryDelay ms.
 
 ### External Dependencies
 - **FFmpeg**: Video/audio processing

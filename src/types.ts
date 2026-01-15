@@ -7,6 +7,8 @@ export interface BatchUploadOptions {
   tokenPath?: string
   categoryId?: string
   privacyStatus?: string
+  maxRetries?: number
+  retryDelay?: number
 }
 
 export interface ClientCredentials {

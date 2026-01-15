@@ -121,6 +121,8 @@ test(
         tokenPath,
         categoryId: '22',
         privacyStatus: 'private',
+        maxRetries: 2,
+        retryDelay: 100,
       })
 
       // Assertions
@@ -148,4 +150,113 @@ test(
     }
   },
   { timeout: 5000 },
+)
+
+test(
+  'should retry uploads on failure with exponential backoff',
+  async () => {
+    let callCount = 0
+    const failingInsertMock = mock(
+      // biome-ignore lint/suspicious/noExplicitAny: Mock body type
+      async (params: { media?: { body?: any } }) => {
+        callCount++
+        const { media } = params
+        if (media?.body) {
+          // Drain the stream
+          await new Promise((resolve, reject) => {
+            media.body.on('error', reject)
+            media.body.on('end', resolve)
+            media.body.resume()
+          })
+        }
+        if (callCount <= 2) {
+          throw new Error('Network error')
+        }
+        return { data: { id: 'retry-success-id' } }
+      },
+    )
+
+    const youtubeServiceMockRetry = {
+      videos: {
+        insert: failingInsertMock,
+      },
+    }
+    const googleYoutubeMockRetry = mock(() => youtubeServiceMockRetry)
+
+    // Create temp dir and fake files
+    const tempDir = mkdtempSync(join(tmpdir(), 'youtube-retry-test-'))
+    const credentialsPath = join(tempDir, 'credentials.json')
+    const tokenPath = join(tempDir, 'token.json')
+    const fakeVideosDir = join(tempDir, 'videos')
+    const fakeDescriptionsDir = join(tempDir, 'descriptions')
+
+    mkdirSync(fakeVideosDir)
+    mkdirSync(fakeDescriptionsDir)
+
+    writeFileSync(join(fakeVideosDir, 'part1.MTS'), '')
+
+    writeFileSync(
+      credentialsPath,
+      JSON.stringify(
+        {
+          installed: {
+            client_id: 'fake-client-id',
+            client_secret: 'fake-secret',
+            redirect_uris: ['urn:ietf:wg:oauth:2.0:oob'],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    writeFileSync(
+      tokenPath,
+      JSON.stringify(
+        {
+          access_token: 'fake-access-token',
+          refresh_token: 'fake-refresh-token',
+          expiry_date: Date.now() + 3600000,
+        },
+        null,
+        2,
+      ),
+    )
+
+    const originalConsoleLog = console.log
+    console.log = consoleLogMock
+
+    mock.module('googleapis', () => ({
+      google: {
+        youtube: googleYoutubeMockRetry,
+      },
+    }))
+
+    mock.module('google-auth-library', () => ({
+      OAuth2Client: OAuth2ClientMock,
+    }))
+
+    const { batchUploadToYoutube } = await import('../src/batchUploadToYoutube')
+
+    try {
+      await batchUploadToYoutube({
+        credentialsPath,
+        videosDir: fakeVideosDir,
+        descriptionsDir: fakeDescriptionsDir,
+        tokenPath,
+        maxRetries: 2,
+        retryDelay: 10, // Short delay for test
+      })
+
+      expect(callCount).toBe(3) // 1 initial + 2 retries
+      expect(consoleLogMock).toHaveBeenCalledWith(
+        'Video uploaded successfully: https://youtu.be/retry-success-id',
+      )
+    } finally {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      console.log = originalConsoleLog
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  },
+  { timeout: 10000 },
 )

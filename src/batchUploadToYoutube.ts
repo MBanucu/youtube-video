@@ -1,9 +1,9 @@
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
+import readline from 'node:readline'
 import type { Credentials } from 'google-auth-library'
 import { OAuth2Client } from 'google-auth-library'
 import { google } from 'googleapis'
-import path from 'path'
-import readline from 'readline'
 import { paths } from './paths'
 import type { BatchUploadOptions, ClientCredentials } from './types'
 
@@ -22,6 +22,8 @@ export class YouTubeBatchUploader {
   private videosDir: string
   private descriptionsDir: string
   private tokenPath: string
+  private maxRetries: number
+  private retryDelay: number
 
   constructor(options: BatchUploadOptions) {
     this.options = options
@@ -30,6 +32,8 @@ export class YouTubeBatchUploader {
     this.tokenPath =
       options.tokenPath ||
       path.join(path.dirname(options.credentialsPath), 'token.json')
+    this.maxRetries = options.maxRetries ?? 3
+    this.retryDelay = options.retryDelay ?? 1000
   }
 
   async authorize(credentials: ClientCredentials): Promise<OAuth2Client> {
@@ -73,10 +77,16 @@ export class YouTubeBatchUploader {
     await Bun.write(this.tokenPath, JSON.stringify(token))
   }
 
-  async initializeAuth(): Promise<void> {
+  async initializeAuth(): Promise<OAuth2Client> {
+    let auth = this.auth
+    if (auth) {
+      return auth
+    }
     const content = await Bun.file(this.options.credentialsPath).text()
     const credentials = JSON.parse(content)
-    this.auth = await this.authorize(credentials)
+    auth = await this.authorize(credentials)
+    this.auth = auth
+    return auth
   }
 
   async findVideoFiles(): Promise<string[]> {
@@ -93,10 +103,6 @@ export class YouTubeBatchUploader {
   }
 
   async uploadBatch(): Promise<void> {
-    if (!this.auth) {
-      await this.initializeAuth()
-    }
-
     const videoFiles = await this.findVideoFiles()
 
     if (videoFiles.length === 0) {
@@ -144,29 +150,49 @@ export class YouTubeBatchUploader {
     categoryId: string,
     privacyStatus: string,
   ): Promise<string> {
-    const service = google.youtube({ version: 'v3', auth: this.auth! })
-
-    const response = await service.videos.insert({
-      part: ['snippet', 'status'],
-      requestBody: {
-        snippet: {
-          title,
-          description,
-          categoryId,
-        },
-        status: {
-          privacyStatus,
-        },
-      },
-      media: {
-        body: fs.createReadStream(videoPath),
-      },
+    const service = google.youtube({
+      version: 'v3',
+      auth: await this.initializeAuth(),
     })
 
+    // biome-ignore lint/suspicious/noExplicitAny: Google API response type is complex
+    let response: any
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        response = await service.videos.insert({
+          part: ['snippet', 'status'],
+          requestBody: {
+            snippet: {
+              title,
+              description,
+              categoryId,
+            },
+            status: {
+              privacyStatus,
+            },
+          },
+          media: {
+            body: fs.createReadStream(videoPath),
+          },
+        })
+        break
+      } catch (error) {
+        if (attempt < this.maxRetries) {
+          const delay = this.retryDelay * 2 ** attempt
+          console.log(
+            `Upload failed, retrying in ${delay}ms... (${attempt + 1}/${this.maxRetries})`,
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        } else {
+          throw error
+        }
+      }
+    }
+
     console.log(
-      `Video uploaded successfully: https://youtu.be/${response.data.id}`,
+      `Video uploaded successfully: https://youtu.be/${response?.data.id}`,
     )
-    return response.data.id || ''
+    return response?.data.id || ''
   }
 }
 

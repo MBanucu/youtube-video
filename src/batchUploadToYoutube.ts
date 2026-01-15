@@ -228,13 +228,3 @@ export class YouTubeBatchUploader {
     }
   }
 }
-
-/**
- * Batch upload split videos to YouTube.
- * @param options Configuration options for the upload
- * @deprecated Use YouTubeBatchUploader class instead
- */
-export async function batchUploadToYoutube(options: BatchUploadOptions) {
-  const uploader = new YouTubeBatchUploader(options)
-  await uploader.uploadBatch()
-}

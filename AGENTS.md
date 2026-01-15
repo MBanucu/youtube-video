@@ -395,7 +395,7 @@ console.error(`Failed to process ${file}: ${error.message}`)
 - **Commit-msg**: Commitlint for conventional commits
 
 ### Configurable Options
-The `batchUploadToYoutube` function accepts configurable options:
+The `YouTubeBatchUploader` class accepts configurable options:
 ```typescript
 interface BatchUploadOptions {
   credentialsPath: string

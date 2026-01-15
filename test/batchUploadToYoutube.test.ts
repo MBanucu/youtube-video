@@ -10,6 +10,7 @@ import { Readable } from 'node:stream'
 const consoleLogMock = mock(() => {})
 
 // Mock google.youtube service
+// biome-ignore lint/suspicious/noExplicitAny: any allows flexible mocking of stream body
 const insertMock = mock(async (params: { media?: { body?: any } }) => {
   const { media } = params
   if (media?.body) {

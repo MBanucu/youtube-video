@@ -24,6 +24,8 @@ pre-push:
       run: bun tsc --noEmit
     knip:
       run: bun run knip
+    fast-tests:
+      run: bun test
 
 commit-msg:
   commands:

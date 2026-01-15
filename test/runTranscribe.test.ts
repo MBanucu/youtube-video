@@ -46,13 +46,10 @@ const runTranscribeTestFn = async () => {
   rmSync(tmpDir, { recursive: true, force: true })
 }
 
+// Conditional test execution for performance-heavy tests
 // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for env vars
-if (process.env['CI']) {
-  test.concurrent(
-    'runTranscribe - transcribes wav to srt',
-    runTranscribeTestFn,
-    { timeout: 300000 },
-  )
-} else {
-  test.skip('runTranscribe - skipped on local CPU', () => {})
-}
+const runHeavyTest = process.env['CI'] ? test.concurrent : test.skip
+
+runHeavyTest('runTranscribe - transcribes wav to srt', runTranscribeTestFn, {
+  timeout: 300000,
+})

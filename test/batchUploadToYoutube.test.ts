@@ -115,20 +115,20 @@ test(
       )
 
       // Order matters – sorting by extracted number
-      expect(sortedVideos[0]!.snippet.title).toBe('Video Part 1')
-      expect(sortedVideos[0]!.snippet.description).toBe(
+      expect(sortedVideos[0]?.snippet.title).toBe('Video Part 1')
+      expect(sortedVideos[0]?.snippet.description).toBe(
         'English description for part 1',
       )
-      expect(sortedVideos[0]!.snippet.categoryId).toBe('22')
-      expect(sortedVideos[0]!.status.privacyStatus).toBe('private')
+      expect(sortedVideos[0]?.snippet.categoryId).toBe('22')
+      expect(sortedVideos[0]?.status.privacyStatus).toBe('private')
 
-      expect(sortedVideos[1]!.snippet.title).toBe('Video Part 10')
-      expect(sortedVideos[1]!.snippet.description).toBe(
+      expect(sortedVideos[1]?.snippet.title).toBe('Video Part 10')
+      expect(sortedVideos[1]?.snippet.description).toBe(
         'English description for part 10',
       )
 
-      expect(sortedVideos[2]!.snippet.title).toBe('Video Part 2')
-      expect(sortedVideos[2]!.snippet.description).toBe(
+      expect(sortedVideos[2]?.snippet.title).toBe('Video Part 2')
+      expect(sortedVideos[2]?.snippet.description).toBe(
         'English description for part 2',
       )
     } finally {

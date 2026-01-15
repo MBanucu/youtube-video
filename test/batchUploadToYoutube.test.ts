@@ -95,16 +95,21 @@ test(
         tokenPath,
         categoryId: '22',
         privacyStatus: 'private',
-        verifyUploads: false,
+        verifyUploads: true,
       })
 
       // === Strong assertions ===
       // Exactly 3 matching videos uploaded (others ignored)
-      const uploadedVideos = fakeServer.getAllVideos()
+      const uploadedVideoIds = fakeServer.getAllVideoIds()
+      expect(uploadedVideoIds.length).toBe(3)
+
+      // Use list API like verification does
+      const listResponse = await fakeServer.list({ id: uploadedVideoIds })
+      const uploadedVideos = listResponse.data.items
       expect(uploadedVideos.length).toBe(3)
 
       // Sort by title for consistent checking
-      const sortedVideos = uploadedVideos.sort((a, b) =>
+      const sortedVideos = uploadedVideos.sort((a: any, b: any) =>
         a.snippet.title.localeCompare(b.snippet.title),
       )
 
@@ -228,7 +233,7 @@ test(
         tokenPath,
         maxRetries: 2,
         retryDelay: 10,
-        verifyUploads: false,
+        verifyUploads: true,
       })
 
       // Retries

@@ -80,6 +80,10 @@ export class FakeGoogleServer {
     return Array.from(this.videos.values())
   }
 
+  getAllVideoIds(): string[] {
+    return Array.from(this.videos.keys())
+  }
+
   clear(): void {
     this.videos.clear()
   }

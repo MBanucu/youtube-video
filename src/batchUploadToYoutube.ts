@@ -153,90 +153,101 @@ async function uploadVideo(
 }
 
 /**
- * Batch upload split videos to YouTube.
- * @param options Configuration options for the upload
+ * Class for batch uploading split videos to YouTube.
  */
-export async function batchUploadToYoutube(options: BatchUploadOptions) {
-  const credentialsPath = options.credentialsPath
-  const tokenPath =
-    options.tokenPath || path.join(path.dirname(credentialsPath), 'token.json')
-  TOKEN_PATH = tokenPath
+export class YouTubeBatchUploader {
+  private options: BatchUploadOptions
+  private auth: OAuth2Client | null = null
+  private videosDir: string
+  private descriptionsDir: string
+  private tokenPath: string
 
-  const videosDir = options.videosDir || paths.videosDir
-  const descriptionsDir = options.descriptionsDir || paths.descriptionsDir
-
-  // Load client secrets from credentials.json
-  const content = await Bun.file(credentialsPath).text()
-  const credentials = JSON.parse(content)
-
-  // Authorize the client
-  const auth = await authorize(credentials)
-
-  // Find all partX.MTS files
-  const files = await fs.promises.readdir(videosDir)
-  const videoFiles = files
-    .filter((f) => f.startsWith('part') && f.endsWith('.MTS'))
-    .sort((a, b) => {
-      const matchA = a.match(/part(\d+)/)
-      const matchB = b.match(/part(\d+)/)
-      const numA = matchA?.[1] ? parseInt(matchA[1], 10) : 0
-      const numB = matchB?.[1] ? parseInt(matchB[1], 10) : 0
-      return numA - numB
-    })
-
-  if (videoFiles.length === 0) {
-    console.log('No split video files found in', videosDir)
-    return
+  constructor(options: BatchUploadOptions) {
+    this.options = options
+    this.videosDir = options.videosDir || paths.videosDir
+    this.descriptionsDir = options.descriptionsDir || paths.descriptionsDir
+    this.tokenPath =
+      options.tokenPath ||
+      path.join(path.dirname(options.credentialsPath), 'token.json')
+    TOKEN_PATH = this.tokenPath
   }
 
-  console.log(`Found ${videoFiles.length} video parts to upload.`)
+  async initializeAuth() {
+    const content = await Bun.file(this.options.credentialsPath).text()
+    const credentials = JSON.parse(content)
+    this.auth = await authorize(credentials)
+  }
 
-  // Upload each video sequentially
-  for (const file of videoFiles) {
-    const match = file.match(/part(\d+)/)
-    const partNumber = match?.[1] ? parseInt(match[1], 10) : 0
-    const videoPath = path.join(videosDir, file)
+  async findVideoFiles(): Promise<string[]> {
+    const files = await fs.promises.readdir(this.videosDir)
+    return files
+      .filter((f) => f.startsWith('part') && f.endsWith('.MTS'))
+      .sort((a, b) => {
+        const matchA = a.match(/part(\d+)/)
+        const matchB = b.match(/part(\d+)/)
+        const numA = matchA?.[1] ? parseInt(matchA[1], 10) : 0
+        const numB = matchB?.[1] ? parseInt(matchB[1], 10) : 0
+        return numA - numB
+      })
+  }
 
-    // Load English description (adjust if combining with DE)
-    const descEnPath = path.join(
-      descriptionsDir,
-      `part${partNumber}-description_en.txt`,
-    )
-    let description = ''
-    try {
-      description = await Bun.file(descEnPath).text()
-    } catch (_err) {
-      console.error(
-        `Description file not found for part ${partNumber}:`,
-        descEnPath,
-      )
-      continue
+  async uploadBatch(): Promise<void> {
+    if (!this.auth) {
+      await this.initializeAuth()
     }
 
-    // Optional: Load and append German description
-    // const descDePath = path.join(descriptionsDir, `part${partNumber}-description_de.txt`);
-    // try {
-    //   const descDe = await fs.promises.readFile(descDePath, 'utf8');
-    //   description += `\n\nGerman Version:\n${descDe}`;
-    // } catch (err) {
-    //   console.warn(`German description not found for part ${partNumber}`);
-    // }
+    const videoFiles = await this.findVideoFiles()
 
-    // Set title (customize as needed, e.g., extract from description)
-    const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
+    if (videoFiles.length === 0) {
+      console.log('No split video files found in', this.videosDir)
+      return
+    }
 
-    console.log(`Uploading ${file} as "${title}"...`)
-    await uploadVideo(
-      auth,
-      videoPath,
-      title,
-      description,
-      options.categoryId || CATEGORY_ID,
-      options.privacyStatus || PRIVACY_STATUS,
-    )
+    console.log(`Found ${videoFiles.length} video parts to upload.`)
+
+    // Upload each video sequentially
+    for (const file of videoFiles) {
+      const match = file.match(/part(\d+)/)
+      const partNumber = match?.[1] ? parseInt(match[1], 10) : 0
+      const videoPath = path.join(this.videosDir, file)
+
+      // Load English description (adjust if combining with DE)
+      const descEnPath = path.join(
+        this.descriptionsDir,
+        `${file.replace('.MTS', '')}-description_en.txt`,
+      )
+      let description = ''
+      try {
+        description = await Bun.file(descEnPath).text()
+      } catch {
+        console.log(`Warning: No English description found for ${file}`)
+      }
+
+      const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
+
+      console.log(`Uploading ${file} as "${title}"...`)
+      await uploadVideo(
+        this.auth!,
+        videoPath,
+        title,
+        description,
+        this.options.categoryId || CATEGORY_ID,
+        this.options.privacyStatus || PRIVACY_STATUS,
+      )
+    }
+
+    console.log('All uploads complete.')
   }
+}
 
-  console.log('All uploads complete.')
+/**
+ * Batch upload split videos to YouTube.
+ * @param options Configuration options for the upload
+ * @deprecated Use YouTubeBatchUploader class instead
+ */
+export async function batchUploadToYoutube(options: BatchUploadOptions) {
+  const uploader = new YouTubeBatchUploader(options)
+  await uploader.uploadBatch()
 }
 
 /**

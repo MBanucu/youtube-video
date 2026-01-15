@@ -12,9 +12,9 @@ const consoleLogMock = mock(() => {})
 const fsPromisesWriteFileMock = mock(async () => {})
 
 // Mock google.youtube service
-const insertMock = mock(async (params: any) => {
+const insertMock = mock(async (params: { media?: { body?: any } }) => {
   const { media } = params
-  if (media && media.body) {
+  if (media?.body) {
     // Drain the stream to simulate consumption and ensure file closure
     await new Promise((resolve, reject) => {
       media.body.on('error', reject)

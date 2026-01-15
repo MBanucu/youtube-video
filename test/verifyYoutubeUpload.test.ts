@@ -1,13 +1,16 @@
 // test/verifyYoutubeUpload.test.ts
 
 import { expect, mock, test } from 'bun:test'
+import type { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { sharedFakeGoogleServer } from './fakeGoogleServer'
 
-// Mock setup
-const mockOAuth2Client = mock(() => ({
-  credentials: {},
-}))
+// Mock setup - minimal OAuth2Client for testing
+const mockOAuth2Client = mock(
+  (): Partial<OAuth2Client> => ({
+    credentials: {},
+  }),
+)
 
 const mockGoogleService = {
   videos: {
@@ -36,8 +39,7 @@ test('verifyVideo throws error when video is null in response items', async () =
     } as youtube_v3.Schema$VideoListResponse),
   )
 
-  // biome-ignore lint/suspicious/noExplicitAny: Test mock OAuth client
-  const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as any)
+  const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as OAuth2Client)
   const fakeVideoId = 'fake-video-id'
 
   try {

@@ -3,6 +3,8 @@ colors: true
 pre-commit:
   parallel: true
   commands:
+    fast-tests:
+      run: bun test --concurrent test/extract-wav.test.ts test/concat-mts.test.ts test/split_video_precise.test.ts test/split_video_precise_check.test.ts test/batchUploadToYoutube.test.ts
     biome:
       glob: "*.{ts,tsx,js,cjs,mjs,json}"
       run: biome check --write --staged {staged_files}
@@ -12,20 +14,18 @@ pre-commit:
     knip:
       glob: "*.{ts,tsx}"
       run: bun run knip
-    fast-tests:
-      run: bun test test/extract-wav.test.ts test/concat-mts.test.ts test/split_video_precise.test.ts test/split_video_precise_check.test.ts test/batchUploadToYoutube.test.ts
 
 pre-push:
   parallel: true
   commands:
+    fast-tests:
+      run: bun test --concurrent
     full-lint:
       run: bun run check
     full-types:
       run: bun tsc --noEmit
     knip:
       run: bun run knip
-    fast-tests:
-      run: bun test
 
 commit-msg:
   commands:

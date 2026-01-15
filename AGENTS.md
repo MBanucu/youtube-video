@@ -35,7 +35,7 @@ bun test --concurrent <file>  # Run specific test with concurrent execution
 
 **Test Discovery**: Tests are automatically discovered using patterns `**/*.test.{js,mjs,cjs,ts,mts,cts,jsx,tsx}` and `**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}`. Each test file runs in parallel in CI.
 
-**Running Single Tests**: Use `bun test <path/to/testfile.test.ts>` to run individual test files.
+**Running Single Tests**: Use `bun test <path/to/testfile.test.ts>` to run individual test files. For performance-heavy tests like transcription, they are conditionally skipped locally (run only in CI) using environment checks.
 
 ### CI Pipeline
 The project uses GitHub Actions with:
@@ -57,16 +57,23 @@ The project uses GitHub Actions with:
 - **Quotes**: Single quotes (`'`)
 - **Semicolons**: As needed (ASI-compliant)
 - **Line Width**: Default (120 characters)
+- **Import Ordering**: Node.js built-ins first, then project modules
 
 ### Import/Export Patterns
 ```typescript
-// Node.js built-ins
+// Node.js built-ins (use 'node:' prefix for Bun compatibility)
 import { join } from 'node:path'
 import { existsSync, mkdirSync } from 'node:fs'
+
+// Bun runtime APIs
+import { spawn } from 'bun'
 
 // Project modules with path aliases
 import { someFunction } from '@/utils'
 import { testHelper } from '@test/helpers'
+
+// Third-party libraries
+import yargs from 'yargs'
 
 // Object exports preferred for related functionality
 export const config = {
@@ -80,6 +87,7 @@ export const config = {
 - **Functions/Variables**: camelCase (`extractWavFromVideo`, `outputPath`)
 - **Types/Interfaces**: PascalCase (`VideoConfig`, `ProcessingOptions`)
 - **Constants**: UPPER_SNAKE_CASE (`MAX_RETRIES = 3`)
+- **Classes**: PascalCase with descriptive names
 
 ### Error Handling
 ```typescript
@@ -125,7 +133,10 @@ export function extractWavFromVideo(inputVideo: string, outputWav: string): bool
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
 
-test.concurrent('functionName - describes what it does', async () => {
+// Conditional test execution for performance-heavy tests
+const runHeavyTest = process.env['CI'] ? test.concurrent : test.skip
+
+runHeavyTest('functionName - describes what it does', async () => {
   // Arrange
   const input = join('testdata', 'sample.MTS')
   const output = join('tmp', 'output.wav')
@@ -143,11 +154,12 @@ test.concurrent('functionName - describes what it does', async () => {
 ```
 
 **Test Organization**:
-- Use `test.concurrent()` for performance
+- Use `test.concurrent()` for performance (parallel execution)
 - Place test data in `testdata/` directory
 - Use temporary directories for outputs
 - Always clean up test artifacts
 - Set appropriate timeouts for async operations
+- Skip performance-heavy tests locally using `process.env['CI']` checks
 
 ### File Structure
 ```
@@ -163,6 +175,11 @@ test/          # Test files
 testdata/      # Test data files
   *.MTS        # Video test files
   *.txt        # Text test files
+
+.github/       # GitHub Actions workflows
+  workflows/   # CI/CD pipelines
+
+node_modules/  # Dependencies (managed by Bun)
 ```
 
 ### Type Safety Best Practices
@@ -171,18 +188,21 @@ testdata/      # Test data files
 - Leverage union types for multiple possible values
 - Use interface/type aliases for complex objects
 - Enable `noImplicitAny` and related strict checks
+- Prefer readonly properties for immutable data
 
 ### Performance Considerations
-- Use `Bun.spawn()` for external processes (FFmpeg, etc.)
-- Handle large video files appropriately
+- Use `Bun.spawn()` for external processes (FFmpeg, Python scripts)
+- Leverage `Bun.file()` and `Bun.write()` for optimized file I/O
+- Handle large video files with streaming
 - Set reasonable timeouts for long operations
-- Use streaming for large file operations when possible
+- Use concurrent test execution for faster CI
 
 ### Security Practices
 - Validate file paths and inputs
-- Use secure temporary file creation
+- Use secure temporary file creation (`mkdtempSync`)
 - Avoid shell injection in command execution
 - Sanitize user inputs for file operations
+- Store sensitive data securely (OAuth tokens, etc.)
 
 ### Commit Message Style
 Follow conventional commits:
@@ -193,21 +213,24 @@ Follow conventional commits:
 
 ### Development Workflow
 1. **Before committing**: Run `bun run check` to ensure code quality
-2. **Test locally**: Run relevant tests with `bun test <file>`
+2. **Test locally**: Run relevant tests with `bun test <file>` (heavy tests auto-skip)
 3. **Type check**: Run `bun tsc --noEmit` for type safety
 4. **Unused code**: Run `bun run knip` to check for dead code
+5. **Commit**: Use conventional commit format with detailed body
 
 ### External Dependencies
 - **FFmpeg**: Video/audio processing
 - **Python + faster-whisper**: AI transcription
 - **OpenCode CLI**: AI description generation
 - **Bun runtime**: JavaScript/TypeScript execution
+- **Google APIs**: YouTube integration
 
 ### Common Patterns in This Codebase
 - Functional programming style with pure functions
-- Configuration objects for complex operations
+- Configuration objects for complex operations (BatchUploadOptions)
 - Path manipulation using `node:path` utilities
 - Error-first callbacks converted to async/await
 - JSDoc for public API documentation
-- Consistent use of `Promise<T>` return types</content>
-<parameter name="filePath">AGENTS.md
+- Consistent use of `Promise<T>` return types
+- Conditional test execution based on environment
+- Use of Bun's optimized APIs (Bun.file, Bun.write, Bun.spawn)

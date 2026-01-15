@@ -16,6 +16,12 @@ interface Args {
   credentials: string
 }
 
+interface BatchUploadOptions {
+  credentialsPath: string
+  videosDir?: string
+  descriptionsDir?: string
+}
+
 interface ClientCredentials {
   installed: {
     client_id: string
@@ -142,93 +148,114 @@ async function uploadVideo(
 }
 
 /**
- * Main function to batch upload split videos.
+ * Batch upload split videos to YouTube.
+ * @param options Configuration options for the upload
  */
-export async function main() {
-  const argv = yargs(hideBin(process.argv)).option('credentials', {
-    type: 'string',
-    alias: 'c',
-    description: 'Path to OAuth credentials.json file',
-    default: './credentials.json',
-    demandOption: false,
-  }).argv as Args
-
-  const credentialsPath = argv.credentials
+export async function batchUploadToYoutube(options: BatchUploadOptions) {
+  const credentialsPath = options.credentialsPath
   const tokenPath = path.join(path.dirname(credentialsPath), 'token.json')
   TOKEN_PATH = tokenPath
 
-  try {
-    // Load client secrets from credentials.json
-    const content = await fs.promises.readFile(credentialsPath, 'utf8')
-    const credentials = JSON.parse(content)
+  const videosDir = options.videosDir || paths.videosDir
+  const descriptionsDir = options.descriptionsDir || paths.descriptionsDir
 
-    // Authorize the client
-    const auth = await authorize(credentials)
+  // Load client secrets from credentials.json
+  const content = await fs.promises.readFile(credentialsPath, 'utf8')
+  const credentials = JSON.parse(content)
 
-    // Get paths from paths.ts
-    const videosDir = paths.videosDir
-    const descriptionsDir = paths.descriptionsDir
+  // Authorize the client
+  const auth = await authorize(credentials)
 
-    // Find all partX.MTS files
-    const files = await fs.promises.readdir(videosDir)
-    const videoFiles = files
-      .filter((f) => f.startsWith('part') && f.endsWith('.MTS'))
-      .sort((a, b) => {
-        const matchA = a.match(/part(\d+)/)
-        const matchB = b.match(/part(\d+)/)
-        const numA = matchA?.[1] ? parseInt(matchA[1], 10) : 0
-        const numB = matchB?.[1] ? parseInt(matchB[1], 10) : 0
-        return numA - numB
-      })
+  // Find all partX.MTS files
+  const files = await fs.promises.readdir(videosDir)
+  const videoFiles = files
+    .filter((f) => f.startsWith('part') && f.endsWith('.MTS'))
+    .sort((a, b) => {
+      const matchA = a.match(/part(\d+)/)
+      const matchB = b.match(/part(\d+)/)
+      const numA = matchA?.[1] ? parseInt(matchA[1], 10) : 0
+      const numB = matchB?.[1] ? parseInt(matchB[1], 10) : 0
+      return numA - numB
+    })
 
-    if (videoFiles.length === 0) {
-      console.log('No split video files found in', videosDir)
-      return
-    }
+  if (videoFiles.length === 0) {
+    console.log('No split video files found in', videosDir)
+    return
+  }
 
-    console.log(`Found ${videoFiles.length} video parts to upload.`)
+  console.log(`Found ${videoFiles.length} video parts to upload.`)
 
-    // Upload each video sequentially
-    for (const file of videoFiles) {
-      const match = file.match(/part(\d+)/)
-      const partNumber = match?.[1] ? parseInt(match[1], 10) : 0
-      const videoPath = path.join(videosDir, file)
+  // Upload each video sequentially
+  for (const file of videoFiles) {
+    const match = file.match(/part(\d+)/)
+    const partNumber = match?.[1] ? parseInt(match[1], 10) : 0
+    const videoPath = path.join(videosDir, file)
 
-      // Load English description (adjust if combining with DE)
-      const descEnPath = path.join(
-        descriptionsDir,
-        `part${partNumber}-description_en.txt`,
+    // Load English description (adjust if combining with DE)
+    const descEnPath = path.join(
+      descriptionsDir,
+      `part${partNumber}-description_en.txt`,
+    )
+    let description = ''
+    try {
+      description = await fs.promises.readFile(descEnPath, 'utf8')
+    } catch (_err) {
+      console.error(
+        `Description file not found for part ${partNumber}:`,
+        descEnPath,
       )
-      let description = ''
-      try {
-        description = await fs.promises.readFile(descEnPath, 'utf8')
-      } catch (_err) {
-        console.error(
-          `Description file not found for part ${partNumber}:`,
-          descEnPath,
-        )
-        continue
-      }
-
-      // Optional: Load and append German description
-      // const descDePath = path.join(descriptionsDir, `part${partNumber}-description_de.txt`);
-      // try {
-      //   const descDe = await fs.promises.readFile(descDePath, 'utf8');
-      //   description += `\n\nGerman Version:\n${descDe}`;
-      // } catch (err) {
-      //   console.warn(`German description not found for part ${partNumber}`);
-      // }
-
-      // Set title (customize as needed, e.g., extract from description)
-      const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
-
-      console.log(`Uploading ${file} as "${title}"...`)
-      await uploadVideo(auth, videoPath, title, description)
+      continue
     }
 
-    console.log('All uploads complete.')
+    // Optional: Load and append German description
+    // const descDePath = path.join(descriptionsDir, `part${partNumber}-description_de.txt`);
+    // try {
+    //   const descDe = await fs.promises.readFile(descDePath, 'utf8');
+    //   description += `\n\nGerman Version:\n${descDe}`;
+    // } catch (err) {
+    //   console.warn(`German description not found for part ${partNumber}`);
+    // }
+
+    // Set title (customize as needed, e.g., extract from description)
+    const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
+
+    console.log(`Uploading ${file} as "${title}"...`)
+    await uploadVideo(auth, videoPath, title, description)
+  }
+
+  console.log('All uploads complete.')
+}
+
+/**
+ * CLI entry point using yargs.
+ */
+async function main() {
+  const argv = yargs(hideBin(process.argv))
+    .option('credentials', {
+      type: 'string',
+      alias: 'c',
+      description: 'Path to OAuth credentials.json file',
+      default: './credentials.json',
+      demandOption: false,
+    })
+    .option('videos-dir', {
+      type: 'string',
+      description: 'Directory containing video files',
+    })
+    .option('descriptions-dir', {
+      type: 'string',
+      description: 'Directory containing description files',
+    }).argv as Args & { 'videos-dir'?: string; 'descriptions-dir'?: string }
+
+  try {
+    await batchUploadToYoutube({
+      credentialsPath: argv.credentials,
+      videosDir: argv['videos-dir'],
+      descriptionsDir: argv['descriptions-dir'],
+    })
   } catch (err) {
     console.error('Error:', err)
+    process.exit(1)
   }
 }
 

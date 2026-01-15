@@ -28,10 +28,11 @@ export class FakeGoogleServer {
 
     // Drain stream if present (like real YouTube API)
     if (params.media?.body) {
+      const body = params.media.body
       await new Promise<void>((resolve, reject) => {
-        params.media!.body.on('error', reject)
-        params.media!.body.on('end', resolve)
-        params.media!.body.resume()
+        body.on('error', reject)
+        body.on('end', resolve)
+        body.resume()
       })
     }
 

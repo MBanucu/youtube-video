@@ -1,9 +1,10 @@
-import { expect, test } from 'bun:test'
+import { expect } from 'bun:test'
 import { existsSync, mkdtempSync, rmSync, statSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { extractWavFromVideo } from '@/extract-wav'
 import { runTranscribe } from '@/runTranscribe'
+import { runHeavyTest } from './utils'
 
 // Test function extracted for reuse
 const runTranscribeTestFn = async () => {
@@ -45,10 +46,6 @@ const runTranscribeTestFn = async () => {
   unlinkSync(srtPath)
   rmSync(tmpDir, { recursive: true, force: true })
 }
-
-// Conditional test execution for performance-heavy tests
-// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for env vars
-const runHeavyTest = process.env['CI'] ? test.concurrent : test.skip
 
 runHeavyTest('runTranscribe - transcribes wav to srt', runTranscribeTestFn, {
   timeout: 300000,

@@ -1,11 +1,8 @@
-import { expect, test } from 'bun:test'
+import { expect } from 'bun:test'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { batchTranscribe } from '@/batchTranscribe'
-
-// Conditional test execution for performance-heavy tests
-// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for env vars
-const runHeavyTest = process.env['CI'] ? test.concurrent : test.skip
+import { runHeavyTest } from './utils'
 
 runHeavyTest(
   'batchTranscribe - processes MTS files to SRT',

@@ -4,6 +4,8 @@ import type { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
 
+type YouTubeService = ReturnType<typeof google.youtube>
+
 export interface ExpectedVideoMetadata {
   title: string
   description: string
@@ -18,20 +20,12 @@ export class YouTubeUploadVerifier {
     this.auth = auth
   }
 
-  async verifyVideo(
+  private async fetchVideoData(
+    service: YouTubeService,
     videoId: string,
-    expected: ExpectedVideoMetadata,
-    maxAttempts: number = 5,
-    delayMs: number = 3000,
-  ): Promise<void> {
-    const service = google.youtube({
-      version: 'v3',
-      auth: this.auth,
-    })
-
-    let videoData: youtube_v3.Schema$Video | null = null
-
-    // First, try to fetch the video data (retry on network/API errors)
+    maxAttempts: number,
+    delayMs: number,
+  ): Promise<youtube_v3.Schema$Video> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const response = await service.videos.list({
@@ -52,8 +46,7 @@ export class YouTubeUploadVerifier {
           throw new Error(`Video ${videoId} missing snippet or status`)
         }
 
-        videoData = video
-        break // Successfully got video data, exit retry loop
+        return video
       } catch (error: unknown) {
         if (attempt === maxAttempts) {
           throw error
@@ -64,13 +57,37 @@ export class YouTubeUploadVerifier {
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
     }
+    // This should never be reached due to the throw in the catch block above
+    throw new Error(`Failed to fetch video data for ${videoId}`)
+  }
+
+  async verifyVideo(
+    videoId: string,
+    expected: ExpectedVideoMetadata,
+    maxAttempts: number = 5,
+    delayMs: number = 3000,
+  ): Promise<void> {
+    const service = google.youtube({
+      version: 'v3',
+      auth: this.auth,
+    })
+
+    // First, try to fetch the video data (retry on network/API errors)
+    const videoData = await this.fetchVideoData(
+      service,
+      videoId,
+      maxAttempts,
+      delayMs,
+    )
 
     // Now validate the video data (no retries for validation errors)
-    if (!videoData) {
-      throw new Error(`Failed to retrieve video data for ${videoId}`)
-    }
-    const snippet = videoData.snippet!
-    const status = videoData.status!
+    // We already verified snippet and status exist in the fetch phase
+    const snippet = videoData.snippet as NonNullable<
+      youtube_v3.Schema$Video['snippet']
+    >
+    const status = videoData.status as NonNullable<
+      youtube_v3.Schema$Video['status']
+    >
 
     if (snippet.title !== expected.title) {
       throw new Error(

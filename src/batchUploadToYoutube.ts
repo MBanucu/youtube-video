@@ -215,7 +215,7 @@ export class YouTubeBatchUploader {
         title,
         description,
         categoryId,
-        privacyStatus: privacyStatus as any,
+        privacyStatus: privacyStatus as 'public' | 'private' | 'unlisted',
       })
     }
 

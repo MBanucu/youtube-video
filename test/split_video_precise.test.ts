@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { splitVideoPrecise } from '@/split_video_precise'
 
-test(
+test.concurrent(
   'splitVideoPrecise - splits MTS file into parts',
   async () => {
     const srcFile = join('testdata', '01 - before24.MTS')

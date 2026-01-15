@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 // Import the functions
 import { batchGenerateDescriptions } from '@/batchGenerateDescription'
 
-test(
+test.concurrent(
   'batchGenerateDescriptions - processes txt files to descriptions',
   async () => {
     const tmpTransDir = './tmp/trans'

@@ -5,10 +5,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// Import will be done inside the test
-
 test(
-  'main should authorize, find videos, and upload them with descriptions',
+  'main should authorize, find videos, filter/sort correctly, load descriptions, and upload with correct parameters',
   async () => {
     // Create temp dir and fake files
     const tempDir = mkdtempSync(join(tmpdir(), 'youtube-test-'))
@@ -17,85 +15,72 @@ test(
     const fakeVideosDir = join(tempDir, 'videos')
     const fakeDescriptionsDir = join(tempDir, 'descriptions')
 
-    // Create temp subdirs
     mkdirSync(fakeVideosDir)
     mkdirSync(fakeDescriptionsDir)
 
-    // Create fake video files
+    // Video files – include extra files to test filtering and sorting
     writeFileSync(join(fakeVideosDir, 'part1.MTS'), '')
     writeFileSync(join(fakeVideosDir, 'part2.MTS'), '')
+    writeFileSync(join(fakeVideosDir, 'part10.MTS'), '') // tests numeric sorting
+    writeFileSync(join(fakeVideosDir, 'other.MTS'), '') // should be ignored
+    writeFileSync(join(fakeVideosDir, 'intro.MTS'), '') // should be ignored
 
-    // Create fake description files
+    // Description files – different text so we can verify correct pairing
     writeFileSync(
       join(fakeDescriptionsDir, 'part1-description_en.txt'),
-      'Fake description for testing',
+      'English description for part 1',
     )
     writeFileSync(
       join(fakeDescriptionsDir, 'part2-description_en.txt'),
-      'Fake description for testing',
+      'English description for part 2',
+    )
+    writeFileSync(
+      join(fakeDescriptionsDir, 'part10-description_en.txt'),
+      'English description for part 10',
     )
 
+    // Fake credentials and existing token (so it loads token, no interactive flow)
     writeFileSync(
       credentialsPath,
-      JSON.stringify(
-        {
-          installed: {
-            client_id: 'fake-client-id',
-            client_secret: 'fake-secret',
-            redirect_uris: ['urn:ietf:wg:oauth:2.0:oob'],
-          },
+      JSON.stringify({
+        installed: {
+          client_id: 'fake-client-id',
+          client_secret: 'fake-secret',
+          redirect_uris: ['urn:ietf:wg:oauth:2.0:oob'],
         },
-        null,
-        2,
-      ),
+      }),
     )
-
     writeFileSync(
       tokenPath,
-      JSON.stringify(
-        {
-          access_token: 'fake-access-token',
-          refresh_token: 'fake-refresh-token',
-          expiry_date: Date.now() + 3600000, // Valid in future
-        },
-        null,
-        2,
-      ),
-    )
-
-    // Mock OAuth2Client
-    const OAuth2ClientMock = mock(
-      (_clientId: string, _clientSecret: string, _redirectUri: string) => ({
-        setCredentials: mock(() => {}),
-        credentials: {},
+      JSON.stringify({
+        access_token: 'fake-access-token',
+        refresh_token: 'fake-refresh-token',
+        expiry_date: Date.now() + 3600000,
       }),
     )
 
-    // Mock google.youtube service
-    // biome-ignore lint/suspicious/noExplicitAny: any allows flexible mocking of stream body
-    const insertMock = mock(async (params: { media?: { body?: any } }) => {
-      const { media } = params
-      if (media?.body) {
-        // Drain the stream to simulate consumption and ensure file closure
+    // Mock OAuth2Client (minimal)
+    const OAuth2ClientMock = mock(() => ({
+      credentials: {},
+    }))
+
+    // Mock youtube.videos.insert – drain stream and return fake response
+    const insertMock = mock(async (params: any) => {
+      if (params.media?.body) {
         await new Promise((resolve, reject) => {
-          media.body.on('error', reject)
-          media.body.on('end', resolve)
-          media.body.resume() // Start flowing data to trigger 'end'
+          params.media.body.on('error', reject)
+          params.media.body.on('end', resolve)
+          params.media.body.resume()
         })
       }
       return { data: { id: 'fake-video-id' } }
     })
-    const youtubeServiceMock = {
-      videos: {
-        insert: insertMock,
-      },
-    }
+
+    const youtubeServiceMock = { videos: { insert: insertMock } }
     const googleYoutubeMock = mock(() => youtubeServiceMock)
 
     mock.module('googleapis', () => ({
-      google: {
-        youtube: googleYoutubeMock,
-      },
+      google: { youtube: googleYoutubeMock },
     }))
 
     mock.module('google-auth-library', () => ({
@@ -105,7 +90,6 @@ test(
     const { batchUploadToYoutube } = await import('../src/batchUploadToYoutube')
 
     try {
-      // Call batchUploadToYoutube
       await batchUploadToYoutube({
         credentialsPath,
         videosDir: fakeVideosDir,
@@ -113,14 +97,32 @@ test(
         tokenPath,
         categoryId: '22',
         privacyStatus: 'private',
-        maxRetries: 2,
-        retryDelay: 100,
       })
 
-      // Assertions - just check completion since concurrent mocks interfere with console.log
-      expect(true).toBe(true)
+      // === Strong assertions ===
+      // Exactly 3 matching videos uploaded (others ignored)
+      expect(insertMock.mock.calls.length).toBe(3)
+
+      const calls = insertMock.mock.calls.map((c) => c[0])
+
+      // Order matters – sorting by extracted number
+      expect(calls[0].requestBody.snippet.title).toBe('Video Part 1')
+      expect(calls[0].requestBody.snippet.description).toBe(
+        'English description for part 1',
+      )
+      expect(calls[0].requestBody.snippet.categoryId).toBe('22')
+      expect(calls[0].requestBody.status.privacyStatus).toBe('private')
+
+      expect(calls[1].requestBody.snippet.title).toBe('Video Part 2')
+      expect(calls[1].requestBody.snippet.description).toBe(
+        'English description for part 2',
+      )
+
+      expect(calls[2].requestBody.snippet.title).toBe('Video Part 10')
+      expect(calls[2].requestBody.snippet.description).toBe(
+        'English description for part 10',
+      )
     } finally {
-      // Cleanup - delay to allow any pending async file opens to complete
       await new Promise((resolve) => setTimeout(resolve, 100))
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -129,45 +131,30 @@ test(
 )
 
 test(
-  'should retry uploads on failure with exponential backoff',
+  'should retry uploads on failure with exponential backoff and use defaults when options omitted',
   async () => {
-    // Mock OAuth2Client
-    const OAuth2ClientMock = mock(
-      (_clientId: string, _clientSecret: string, _redirectUri: string) => ({
-        setCredentials: mock(() => {}),
-        credentials: {},
-      }),
-    )
-
     let callCount = 0
-    const failingInsertMock = mock(
-      // biome-ignore lint/suspicious/noExplicitAny: Mock body type
-      async (params: { media?: { body?: any } }) => {
-        callCount++
-        const { media } = params
-        if (media?.body) {
-          // Drain the stream
-          await new Promise((resolve, reject) => {
-            media.body.on('error', reject)
-            media.body.on('end', resolve)
-            media.body.resume()
-          })
-        }
-        if (callCount <= 2) {
-          throw new Error('Network error')
-        }
-        return { data: { id: 'retry-success-id' } }
-      },
-    )
+    const failingInsertMock = mock(async (params: any) => {
+      callCount++
+      if (params.media?.body) {
+        await new Promise((resolve, reject) => {
+          params.media.body.on('error', reject)
+          params.media.body.on('end', resolve)
+          params.media.body.resume()
+        })
+      }
+      if (callCount <= 2) throw new Error('Network error')
+      return { data: { id: 'retry-success-id' } }
+    })
 
-    const youtubeServiceMockRetry = {
-      videos: {
-        insert: failingInsertMock,
-      },
-    }
-    const googleYoutubeMockRetry = mock(() => youtubeServiceMockRetry)
+    const youtubeServiceMock = { videos: { insert: failingInsertMock } }
+    const googleYoutubeMock = mock(() => youtubeServiceMock)
 
-    // Create temp dir and fake files
+    const OAuth2ClientMock = mock(() => ({
+      credentials: {},
+    }))
+
+    // Temp setup – only one video, no description file
     const tempDir = mkdtempSync(join(tmpdir(), 'youtube-retry-test-'))
     const credentialsPath = join(tempDir, 'credentials.json')
     const tokenPath = join(tempDir, 'token.json')
@@ -181,36 +168,25 @@ test(
 
     writeFileSync(
       credentialsPath,
-      JSON.stringify(
-        {
-          installed: {
-            client_id: 'fake-client-id',
-            client_secret: 'fake-secret',
-            redirect_uris: ['urn:ietf:wg:oauth:2.0:oob'],
-          },
+      JSON.stringify({
+        installed: {
+          client_id: 'fake-client-id',
+          client_secret: 'fake-secret',
+          redirect_uris: ['urn:ietf:wg:oauth:2.0:oob'],
         },
-        null,
-        2,
-      ),
+      }),
     )
-
     writeFileSync(
       tokenPath,
-      JSON.stringify(
-        {
-          access_token: 'fake-access-token',
-          refresh_token: 'fake-refresh-token',
-          expiry_date: Date.now() + 3600000,
-        },
-        null,
-        2,
-      ),
+      JSON.stringify({
+        access_token: 'fake-access-token',
+        refresh_token: 'fake-refresh-token',
+        expiry_date: Date.now() + 3600000,
+      }),
     )
 
     mock.module('googleapis', () => ({
-      google: {
-        youtube: googleYoutubeMockRetry,
-      },
+      google: { youtube: googleYoutubeMock },
     }))
 
     mock.module('google-auth-library', () => ({
@@ -226,10 +202,18 @@ test(
         descriptionsDir: fakeDescriptionsDir,
         tokenPath,
         maxRetries: 2,
-        retryDelay: 10, // Short delay for test
+        retryDelay: 10,
       })
 
-      expect(callCount).toBe(3) // 1 initial + 2 retries
+      // Retries
+      expect(callCount).toBe(3)
+
+      // Parameters (description empty, defaults used)
+      const lastCall = failingInsertMock.mock.calls[2]?.[0]
+      expect(lastCall?.requestBody.snippet.title).toBe('Video Part 1')
+      expect(lastCall?.requestBody.snippet.description).toBe('')
+      expect(lastCall?.requestBody.snippet.categoryId).toBe('22') // default
+      expect(lastCall?.requestBody.status.privacyStatus).toBe('private') // default
     } finally {
       await new Promise((resolve) => setTimeout(resolve, 100))
       rmSync(tempDir, { recursive: true, force: true })

@@ -199,7 +199,11 @@ jobs:
       - name: Run tests
         run: |
           . .venv/bin/activate
-          bun test --concurrent ${{ matrix.test-file }}
+          if [[ "${{ matrix.test-file }}" == "test/batchUploadToYoutube.test.ts" ]]; then
+            bun test ${{ matrix.test-file }}
+          else
+            bun test --concurrent ${{ matrix.test-file }}
+          fi
 
   tests-complete:
     name: tests-complete

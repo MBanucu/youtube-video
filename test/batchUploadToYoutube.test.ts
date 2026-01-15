@@ -4,6 +4,7 @@ import { expect, mock, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { FakeGoogleServer } from './fakeGoogleServer'
 
 test(
   'main should authorize, find videos, filter/sort correctly, load descriptions, and upload with correct parameters',
@@ -65,39 +66,14 @@ test(
     }))
 
     // Mock youtube.videos.insert – drain stream and return fake response
-    const insertMock = mock(async (params: any) => {
-      if (params.media?.body) {
-        await new Promise((resolve, reject) => {
-          params.media.body.on('error', reject)
-          params.media.body.on('end', resolve)
-          params.media.body.resume()
-        })
-      }
-      return { data: { id: 'fake-video-id' } }
-    })
-
-    // Mock youtube.videos.list for verification
-    const listMock = mock(async () => {
-      return {
-        data: {
-          items: [
-            {
-              snippet: {
-                title: 'Video Part 1', // Mock expected title for verification
-                description: 'English description for part 1',
-                categoryId: '22',
-              },
-              status: {
-                privacyStatus: 'private',
-              },
-            },
-          ],
-        },
-      }
-    })
+    // Fake YouTube server that stores and serves video data
+    const fakeServer = new FakeGoogleServer()
 
     const youtubeServiceMock = {
-      videos: { insert: insertMock, list: listMock },
+      videos: {
+        insert: fakeServer.insert.bind(fakeServer),
+        list: fakeServer.list.bind(fakeServer),
+      },
     }
     const googleYoutubeMock = mock(() => youtubeServiceMock)
 
@@ -124,26 +100,30 @@ test(
 
       // === Strong assertions ===
       // Exactly 3 matching videos uploaded (others ignored)
-      expect(insertMock.mock.calls.length).toBe(3)
+      const uploadedVideos = fakeServer.getAllVideos()
+      expect(uploadedVideos.length).toBe(3)
 
-      const calls = insertMock.mock.calls.map((c) => c[0])
+      // Sort by title for consistent checking
+      const sortedVideos = uploadedVideos.sort((a, b) =>
+        a.snippet.title.localeCompare(b.snippet.title),
+      )
 
       // Order matters – sorting by extracted number
-      expect(calls[0].requestBody.snippet.title).toBe('Video Part 1')
-      expect(calls[0].requestBody.snippet.description).toBe(
+      expect(sortedVideos[0]!.snippet.title).toBe('Video Part 1')
+      expect(sortedVideos[0]!.snippet.description).toBe(
         'English description for part 1',
       )
-      expect(calls[0].requestBody.snippet.categoryId).toBe('22')
-      expect(calls[0].requestBody.status.privacyStatus).toBe('private')
+      expect(sortedVideos[0]!.snippet.categoryId).toBe('22')
+      expect(sortedVideos[0]!.status.privacyStatus).toBe('private')
 
-      expect(calls[1].requestBody.snippet.title).toBe('Video Part 2')
-      expect(calls[1].requestBody.snippet.description).toBe(
-        'English description for part 2',
+      expect(sortedVideos[1]!.snippet.title).toBe('Video Part 10')
+      expect(sortedVideos[1]!.snippet.description).toBe(
+        'English description for part 10',
       )
 
-      expect(calls[2].requestBody.snippet.title).toBe('Video Part 10')
-      expect(calls[2].requestBody.snippet.description).toBe(
-        'English description for part 10',
+      expect(sortedVideos[2]!.snippet.title).toBe('Video Part 2')
+      expect(sortedVideos[2]!.snippet.description).toBe(
+        'English description for part 2',
       )
     } finally {
       await new Promise((resolve) => setTimeout(resolve, 100))

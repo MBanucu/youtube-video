@@ -73,12 +73,12 @@ export class YouTubeUploadVerifier {
 
         console.log(`Verification successful for video ${videoId}`)
         return
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (attempt === maxAttempts) {
           throw error
         }
         console.log(
-          `Verification attempt ${attempt} failed: ${error.message}. Retrying in ${delayMs}ms...`,
+          `Verification attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}. Retrying in ${delayMs}ms...`,
         )
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }

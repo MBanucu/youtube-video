@@ -23,7 +23,7 @@ test('verifyVideo throws error when video is not found', async () => {
       10,
     ) // maxAttempts=1, delayMs=10 to speed up test
     throw new Error('Expected error to be thrown')
-  } catch (error) {
+  } catch (error: unknown) {
     expect(error).toBeInstanceOf(Error)
     expect((error as Error).message).toBe(
       `Video ${fakeVideoId} not found on channel`,

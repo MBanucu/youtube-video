@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { extractWavFromVideo } from '@/extract-wav'
 import { runTranscribe } from '@/runTranscribe'
 
+// biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket notation for env vars
 if (process.env['CI']) {
   test.concurrent(
     'runTranscribe - transcribes wav to srt',

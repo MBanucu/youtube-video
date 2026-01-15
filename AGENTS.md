@@ -47,7 +47,13 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
    - Metadata management (titles, descriptions, privacy settings)
    - Exponential backoff for network resilience
 
-5. **Configuration & Types Layer** (`types.ts`, `paths.ts`)
+5. **YouTube Upload Verification Layer** (`verifyYoutubeUpload.ts`)
+   - Post-upload metadata validation using YouTube API polling
+   - Configurable retry attempts with exponential backoff
+   - Comprehensive error handling and logging
+   - Validates title, description, category, and privacy status
+
+6. **Configuration & Types Layer** (`types.ts`, `paths.ts`)
    - Strongly typed configuration objects
    - Path management with environment flexibility
    - Interface definitions for all major operations
@@ -64,6 +70,7 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
 ### Core Source Files (`src/`)
 
 - **`batchUploadToYoutube.ts`**: Main YouTube uploader class with OAuth2 authentication, batch processing, and retry logic. The primary entry point for YouTube operations.
+- **`verifyYoutubeUpload.ts`**: Post-upload verification system that polls YouTube API to validate uploaded video metadata
 - **`types.ts`**: Contains all TypeScript interfaces and types used across the project, including `BatchUploadOptions`, `ClientCredentials`, and YouTube API response types.
 - **`paths.ts`**: Centralizes path configurations and default directories for videos, descriptions, and outputs.
 - **`utils.ts`**: Shared utility functions for common operations like file validation, duration parsing, and error formatting.
@@ -75,6 +82,7 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
 - **`batchTranscribe.test.ts`**: Tests for audio transcription workflows.
 - **`runTranscribe.test.ts`**: Individual transcription test cases.
 - **`utils.ts`**: Test utilities including `runHeavyTest` for conditional execution based on CI environment.
+- **`fakeGoogleServer.ts`**: Mock YouTube API server for testing with realistic API simulation
 
 ### Test Data and Assets (`testdata/`)
 
@@ -91,13 +99,13 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
 ### CI/CD Infrastructure (`.github/`)
 
 - **`workflows/test.yml`**: GitHub Actions workflow with matrix testing, conditional concurrency, and setup for FFmpeg/Python dependencies.
-- **`copilot-instructions.md`**: (Not present) - Would contain GitHub Copilot custom instructions if available.
 
 ### External Dependencies and Tools
 
 - **FFmpeg**: Used for video splitting, concatenation, and audio extraction.
 - **Python + faster-whisper**: For AI-powered audio transcription.
 - **OpenCode CLI**: For generating video descriptions using AI.
+- **Bun runtime**: JavaScript/TypeScript execution.
 - **Google APIs**: YouTube Data API v3 for video uploads and metadata management.
 
 ## Build/Lint/Test Commands
@@ -131,7 +139,7 @@ bun test --concurrent <file>  # Run specific test with concurrent execution
 ```typescript
 import { runHeavyTest } from './utils'
 
-runHeavyTest('test name', async () => { ... }, { timeout: 300000 })
+runHeavyTest('functionName - describes what it does', async () => { ... }, { timeout: 300000 })
 ```
 
 ### CI Pipeline
@@ -410,9 +418,36 @@ interface BatchUploadOptions {
 - **Bun runtime**: JavaScript/TypeScript execution
 - **Google APIs**: YouTube integration
 
-### Common Patterns, Best Practices, and Anti-Patterns
+## Framework-Specific Guidelines
 
-#### Core Patterns
+### Bun Runtime Guidelines
+- **Use Bun APIs**: Prefer `Bun.file()`, `Bun.write()`, `Bun.spawn()` for performance
+- **Module Resolution**: Leverage Bun's bundler-friendly module resolution
+- **Environment Variables**: Access via `process.env['VAR_NAME']` with bracket notation
+- **Type Definitions**: Use `@types/bun` for proper TypeScript support
+
+### YouTube Data API v3 Guidelines
+- **Authentication**: Always use OAuth2 with token persistence
+- **Scopes**: Include both upload and readonly scopes for verification
+- **Rate Limits**: Implement exponential backoff for quota handling
+- **Error Handling**: Check for specific API errors (quota exceeded, invalid credentials)
+- **Metadata Validation**: Verify all required fields before upload
+
+### FFmpeg Integration Guidelines
+- **Command Construction**: Build commands as arrays to avoid shell injection
+- **Output Handling**: Capture both stdout and stderr for debugging
+- **Timeout Management**: Set reasonable timeouts for long-running operations
+- **File Validation**: Check file existence and format before processing
+
+### Python Integration Guidelines
+- **Virtual Environment**: Always use venv for Python dependencies
+- **Process Communication**: Use stdin/stdout for data exchange with Python scripts
+- **Error Propagation**: Capture and forward Python script errors to TypeScript
+- **Dependency Management**: Pin versions in requirements.txt
+
+## Common Patterns, Best Practices, and Anti-Patterns
+
+### Core Patterns
 - **Functional Programming Style**: Pure functions with minimal side effects, composing operations through function calls rather than class inheritance.
 - **Configuration Objects**: Complex operations parameterized via strongly-typed options objects (e.g., `BatchUploadOptions`) instead of long parameter lists.
 - **Path Manipulation**: Always use `node:path` utilities for cross-platform compatibility, avoiding string concatenation for paths.
@@ -422,7 +457,7 @@ interface BatchUploadOptions {
 - **Conditional Test Execution**: Heavy tests run only in CI using `runHeavyTest` helper to optimize local development.
 - **Bun-Optimized I/O**: Prefer `Bun.file()`, `Bun.write()`, and `Bun.spawn()` for performance-critical file operations.
 
-#### Best Practices
+### Best Practices
 - **Type Safety First**: Enable all strict TypeScript checks; avoid `any` types except for external API responses with biome ignores.
 - **Error Resilience**: Always handle errors gracefully with descriptive messages; use exponential backoff for retries.
 - **Resource Cleanup**: Explicitly clean up temporary files and streams to prevent resource leaks.
@@ -432,7 +467,7 @@ interface BatchUploadOptions {
 - **Test Isolation**: Each test should be completely independent with its own mocks and cleanup.
 - **Documentation Updates**: Update AGENTS.md and inline docs when adding new patterns or changing existing ones.
 
-#### Anti-Patterns to Avoid
+### Anti-Patterns to Avoid
 - **Avoid Synchronous File I/O**: Never use blocking file operations for large files; always use async/streaming alternatives.
 - **No Global State**: Avoid global variables or shared mutable state; use dependency injection and local scope.
 - **Avoid Magic Numbers**: Define constants for any hardcoded values like timeouts, retries, or buffer sizes.
@@ -442,7 +477,7 @@ interface BatchUploadOptions {
 - **Avoid Race Conditions**: Properly handle async operations to prevent concurrent access issues.
 - **No Large Test Files**: Keep test files focused; split large test suites into multiple files.
 
-#### Domain-Specific Patterns
+### Domain-Specific Patterns
 
 **YouTube API Integration**:
 - Always use OAuth2 with token persistence for authentication

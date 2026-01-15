@@ -115,15 +115,19 @@ export class YouTubeBatchUploader {
       })
   }
 
-  async uploadBatch(): Promise<void> {
+  async uploadBatch(): Promise<
+    GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>[]
+  > {
     const videoFiles = await this.findVideoFiles()
 
     if (videoFiles.length === 0) {
       console.log('No split video files found in', this.videosDir)
-      return
+      return []
     }
 
     console.log(`Found ${videoFiles.length} video parts to upload.`)
+
+    const responses: GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>[] = []
 
     for (const file of videoFiles) {
       const match = file.match(/part(\d+)/)
@@ -144,16 +148,18 @@ export class YouTubeBatchUploader {
       const title = `Video Part ${partNumber}`
 
       console.log(`Uploading ${file} as "${title}"...`)
-      await this.uploadVideo(
+      const response = await this.uploadVideo(
         videoPath,
         title,
         description,
         this.options.categoryId || CATEGORY_ID,
         this.options.privacyStatus || PRIVACY_STATUS,
       )
+      responses.push(response)
     }
 
     console.log('All uploads complete.')
+    return responses
   }
 
   private async uploadVideoWithRetry(
@@ -206,13 +212,7 @@ export class YouTubeBatchUploader {
     categoryId: string,
     privacyStatus: string,
     verify?: boolean,
-  ): Promise<{
-    videoId: string
-    title: string
-    description: string
-    categoryId: string
-    privacyStatus: string
-  }> {
+  ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
     const service = google.youtube({
       version: 'v3',
       auth: await this.getAuth(),
@@ -242,12 +242,6 @@ export class YouTubeBatchUploader {
       })
     }
 
-    return {
-      videoId: uploadedVideoId,
-      title,
-      description,
-      categoryId,
-      privacyStatus,
-    }
+    return response
   }
 }

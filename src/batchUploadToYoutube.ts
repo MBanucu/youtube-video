@@ -56,7 +56,7 @@ export async function authorize(
   const oauth2Client = new OAuth2(clientId, clientSecret, redirectUrl)
 
   try {
-    const token = await fs.promises.readFile(TOKEN_PATH, 'utf8')
+    const token = await Bun.file(TOKEN_PATH).text()
     oauth2Client.credentials = JSON.parse(token)
     return oauth2Client
   } catch (_err) {
@@ -103,7 +103,7 @@ export async function getNewToken(
  * @param token The token to store to disk.
  */
 export async function storeToken(token: Credentials): Promise<void> {
-  await fs.promises.writeFile(TOKEN_PATH, JSON.stringify(token))
+  await Bun.write(TOKEN_PATH, JSON.stringify(token))
   console.log('Token stored to', TOKEN_PATH)
 }
 
@@ -160,7 +160,7 @@ export async function batchUploadToYoutube(options: BatchUploadOptions) {
   const descriptionsDir = options.descriptionsDir || paths.descriptionsDir
 
   // Load client secrets from credentials.json
-  const content = await fs.promises.readFile(credentialsPath, 'utf8')
+  const content = await Bun.file(credentialsPath).text()
   const credentials = JSON.parse(content)
 
   // Authorize the client
@@ -198,7 +198,7 @@ export async function batchUploadToYoutube(options: BatchUploadOptions) {
     )
     let description = ''
     try {
-      description = await fs.promises.readFile(descEnPath, 'utf8')
+      description = await Bun.file(descEnPath).text()
     } catch (_err) {
       console.error(
         `Description file not found for part ${partNumber}:`,

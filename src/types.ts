@@ -9,6 +9,7 @@ export interface BatchUploadOptions {
   privacyStatus?: string
   maxRetries?: number
   retryDelay?: number
+  verifyUploads?: boolean
 }
 
 export interface ClientCredentials {

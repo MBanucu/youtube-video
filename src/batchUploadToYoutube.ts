@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { google } from 'googleapis'
 import { paths } from './paths'
 import type { BatchUploadOptions, ClientCredentials } from './types'
+import { YouTubeUploadVerifier } from './verifyYoutubeUpload'
 
 // YouTube video category ID (22 = People & Blogs; adjust as needed, e.g., 28 for Science & Technology)
 const CATEGORY_ID = '22'
@@ -14,7 +15,10 @@ const CATEGORY_ID = '22'
 const PRIVACY_STATUS = 'private' // Options: 'public', 'private', 'unlisted'
 
 // OAuth2 scopes for YouTube
-const SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+const SCOPES = [
+  'https://www.googleapis.com/auth/youtube.upload',
+  'https://www.googleapis.com/auth/youtube.readonly',
+]
 
 export class YouTubeBatchUploader {
   private options: BatchUploadOptions
@@ -153,7 +157,14 @@ export class YouTubeBatchUploader {
     description: string,
     categoryId: string,
     privacyStatus: string,
-  ): Promise<string> {
+    verify?: boolean,
+  ): Promise<{
+    videoId: string
+    title: string
+    description: string
+    categoryId: string
+    privacyStatus: string
+  }> {
     const service = google.youtube({
       version: 'v3',
       auth: await this.getAuth(),
@@ -193,10 +204,28 @@ export class YouTubeBatchUploader {
       }
     }
 
+    const uploadedVideoId = response?.data.id || ''
     console.log(
-      `Video uploaded successfully: https://youtu.be/${response?.data.id}`,
+      `Video uploaded successfully: https://youtu.be/${uploadedVideoId}`,
     )
-    return response?.data.id || ''
+
+    if ((verify ?? this.options.verifyUploads ?? true) && uploadedVideoId) {
+      const verifier = new YouTubeUploadVerifier(await this.getAuth())
+      await verifier.verifyVideo(uploadedVideoId, {
+        title,
+        description,
+        categoryId,
+        privacyStatus: privacyStatus as any,
+      })
+    }
+
+    return {
+      videoId: uploadedVideoId,
+      title,
+      description,
+      categoryId,
+      privacyStatus,
+    }
   }
 }
 

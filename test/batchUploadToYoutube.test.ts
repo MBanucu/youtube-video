@@ -76,7 +76,29 @@ test(
       return { data: { id: 'fake-video-id' } }
     })
 
-    const youtubeServiceMock = { videos: { insert: insertMock } }
+    // Mock youtube.videos.list for verification
+    const listMock = mock(async () => {
+      return {
+        data: {
+          items: [
+            {
+              snippet: {
+                title: 'Video Part 1', // Mock expected title for verification
+                description: 'English description for part 1',
+                categoryId: '22',
+              },
+              status: {
+                privacyStatus: 'private',
+              },
+            },
+          ],
+        },
+      }
+    })
+
+    const youtubeServiceMock = {
+      videos: { insert: insertMock, list: listMock },
+    }
     const googleYoutubeMock = mock(() => youtubeServiceMock)
 
     mock.module('googleapis', () => ({
@@ -97,6 +119,7 @@ test(
         tokenPath,
         categoryId: '22',
         privacyStatus: 'private',
+        verifyUploads: false,
       })
 
       // === Strong assertions ===
@@ -147,7 +170,29 @@ test(
       return { data: { id: 'retry-success-id' } }
     })
 
-    const youtubeServiceMock = { videos: { insert: failingInsertMock } }
+    // Mock youtube.videos.list for verification
+    const listMock = mock(async () => {
+      return {
+        data: {
+          items: [
+            {
+              snippet: {
+                title: 'Video Part 1', // Mock expected title for verification
+                description: '',
+                categoryId: '22',
+              },
+              status: {
+                privacyStatus: 'private',
+              },
+            },
+          ],
+        },
+      }
+    })
+
+    const youtubeServiceMock = {
+      videos: { insert: failingInsertMock, list: listMock },
+    }
     const googleYoutubeMock = mock(() => youtubeServiceMock)
 
     const OAuth2ClientMock = mock(() => ({
@@ -203,6 +248,7 @@ test(
         tokenPath,
         maxRetries: 2,
         retryDelay: 10,
+        verifyUploads: false,
       })
 
       // Retries

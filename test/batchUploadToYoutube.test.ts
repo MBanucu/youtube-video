@@ -4,6 +4,7 @@ import { expect, mock, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { VideoData } from './fakeGoogleServer'
 import { FakeGoogleServer } from './fakeGoogleServer'
 
 test(
@@ -109,7 +110,7 @@ test(
       expect(uploadedVideos.length).toBe(3)
 
       // Sort by title for consistent checking
-      const sortedVideos = uploadedVideos.sort((a: any, b: any) =>
+      const sortedVideos = uploadedVideos.sort((a: VideoData, b: VideoData) =>
         a.snippet.title.localeCompare(b.snippet.title),
       )
 

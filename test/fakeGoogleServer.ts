@@ -1,17 +1,17 @@
 // test/fakeGoogleServer.ts
 // Fake YouTube server that stores uploaded videos and serves them via list API
 
-interface VideoSnippet {
+export interface VideoSnippet {
   title: string
   description: string
   categoryId: string
 }
 
-interface VideoStatus {
+export interface VideoStatus {
   privacyStatus: 'public' | 'private' | 'unlisted'
 }
 
-interface VideoData {
+export interface VideoData {
   id: string
   snippet: VideoSnippet
   status: VideoStatus

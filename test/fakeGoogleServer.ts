@@ -65,8 +65,9 @@ export class FakeGoogleServer {
   }
 
   // Simulate videos.list
-  // biome-ignore lint/suspicious/noExplicitAny: Mock implementation using any for flexibility
-  async list(params: any): Promise<any> {
+  async list(
+    params: youtube_v3.Params$Resource$Videos$List,
+  ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$VideoListResponse>> {
     const requestedIds = params.id || []
     const items: VideoData[] = []
 
@@ -80,8 +81,19 @@ export class FakeGoogleServer {
     return {
       data: {
         items,
+        kind: 'youtube#videoListResponse',
+        etag: '"etag"',
+        pageInfo: {
+          totalResults: items.length,
+          resultsPerPage: items.length,
+        },
       },
-    }
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+      ok: true,
+    } as GaxiosResponseWithHTTP2<youtube_v3.Schema$VideoListResponse>
   }
 
   // Utility methods for testing

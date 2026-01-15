@@ -107,7 +107,7 @@ test(
 
       // Use list API like verification does
       const listResponse = await fakeServer.list({ id: uploadedVideoIds })
-      const uploadedVideos = listResponse.data.items
+      const uploadedVideos = listResponse.data.items || []
 
       // Check that we have the expected videos by their properties
       const videosPart1 = uploadedVideos.filter(
@@ -208,7 +208,7 @@ test(
 
       // Use list API to verify the uploaded video
       const listResponse = await fakeServer.list({ id: uploadedVideoIds })
-      const uploadedVideos = listResponse.data.items
+      const uploadedVideos = listResponse.data.items || []
 
       // Find the video with empty description specifically
       const video = uploadedVideos.find(

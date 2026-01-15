@@ -10,7 +10,7 @@ test('verifyVideo throws error when video is not found', async () => {
   const verifier = new YouTubeUploadVerifier(mockOAuth2Client() as OAuth2Client)
   const fakeVideoId = 'non-existent-video-id'
 
-  await expect(
+  expect(
     verifier.verifyVideo(
       fakeVideoId,
       {

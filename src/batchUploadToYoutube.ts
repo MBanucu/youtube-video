@@ -20,6 +20,9 @@ interface BatchUploadOptions {
   credentialsPath: string
   videosDir?: string
   descriptionsDir?: string
+  tokenPath?: string
+  categoryId?: string
+  privacyStatus?: string
 }
 
 interface ClientCredentials {
@@ -120,6 +123,8 @@ async function uploadVideo(
   videoPath: string,
   title: string,
   description: string,
+  categoryId: string,
+  privacyStatus: string,
 ): Promise<string> {
   const service = google.youtube({ version: 'v3', auth })
 
@@ -129,11 +134,11 @@ async function uploadVideo(
       snippet: {
         title,
         description,
-        categoryId: CATEGORY_ID,
+        categoryId: categoryId,
         // tags: ['tag1', 'tag2'], // Add tags if needed
       },
       status: {
-        privacyStatus: PRIVACY_STATUS,
+        privacyStatus: privacyStatus,
       },
     },
     media: {
@@ -153,7 +158,8 @@ async function uploadVideo(
  */
 export async function batchUploadToYoutube(options: BatchUploadOptions) {
   const credentialsPath = options.credentialsPath
-  const tokenPath = path.join(path.dirname(credentialsPath), 'token.json')
+  const tokenPath =
+    options.tokenPath || path.join(path.dirname(credentialsPath), 'token.json')
   TOKEN_PATH = tokenPath
 
   const videosDir = options.videosDir || paths.videosDir
@@ -220,7 +226,14 @@ export async function batchUploadToYoutube(options: BatchUploadOptions) {
     const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
 
     console.log(`Uploading ${file} as "${title}"...`)
-    await uploadVideo(auth, videoPath, title, description)
+    await uploadVideo(
+      auth,
+      videoPath,
+      title,
+      description,
+      options.categoryId || CATEGORY_ID,
+      options.privacyStatus || PRIVACY_STATUS,
+    )
   }
 
   console.log('All uploads complete.')

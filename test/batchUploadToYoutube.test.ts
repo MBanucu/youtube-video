@@ -12,6 +12,7 @@ const consoleLogMock = mock(() => {})
 const fsPromisesWriteFileMock = mock(async () => {})
 
 // Mock google.youtube service
+// biome-ignore lint/suspicious/noExplicitAny: any allows flexible mocking of stream body
 const insertMock = mock(async (params: { media?: { body?: any } }) => {
   const { media } = params
   if (media?.body) {

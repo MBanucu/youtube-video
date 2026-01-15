@@ -111,48 +111,6 @@ export async function storeToken(token: Credentials): Promise<void> {
 }
 
 /**
- * Upload a single video to YouTube.
- * @param auth Authorized OAuth2 client.
- * @param videoPath Path to the video file.
- * @param title Video title.
- * @param description Video description.
- * @returns Promise resolving to the uploaded video ID.
- */
-async function uploadVideo(
-  auth: OAuth2Client,
-  videoPath: string,
-  title: string,
-  description: string,
-  categoryId: string,
-  privacyStatus: string,
-): Promise<string> {
-  const service = google.youtube({ version: 'v3', auth })
-
-  const response = await service.videos.insert({
-    part: ['snippet', 'status'],
-    requestBody: {
-      snippet: {
-        title,
-        description,
-        categoryId: categoryId,
-        // tags: ['tag1', 'tag2'], // Add tags if needed
-      },
-      status: {
-        privacyStatus: privacyStatus,
-      },
-    },
-    media: {
-      body: fs.createReadStream(videoPath),
-    },
-  })
-
-  console.log(
-    `Video uploaded successfully: https://youtu.be/${response.data.id}`,
-  )
-  return response.data.id || ''
-}
-
-/**
  * Class for batch uploading split videos to YouTube.
  */
 export class YouTubeBatchUploader {
@@ -170,6 +128,83 @@ export class YouTubeBatchUploader {
       options.tokenPath ||
       path.join(path.dirname(options.credentialsPath), 'token.json')
     TOKEN_PATH = this.tokenPath
+  }
+
+  /**
+   * Get and store new token after prompting for user authorization.
+   * @param oauth2Client The OAuth2 client to get token for.
+   * @returns Promise resolving to the authorized OAuth2 client.
+   */
+  static async getNewToken(oauth2Client: OAuth2Client): Promise<OAuth2Client> {
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: SCOPES,
+    })
+    console.log('Authorize this app by visiting this url:', authUrl)
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+    const code = await new Promise<string>((resolve) => {
+      rl.question('Enter the code from that page here: ', (code) => {
+        rl.close()
+        resolve(code)
+      })
+    })
+    const token = await oauth2Client.getToken(code)
+    oauth2Client.credentials = token.tokens
+    await YouTubeBatchUploader.storeToken(token.tokens)
+    return oauth2Client
+  }
+
+  /**
+   * Store token to disk be used in later program executions.
+   * @param token The token to store.
+   */
+  static async storeToken(token: Credentials): Promise<void> {
+    await Bun.write(TOKEN_PATH, JSON.stringify(token))
+  }
+
+  /**
+   * Upload a single video to YouTube.
+   * @param videoPath Path to the video file.
+   * @param title Video title.
+   * @param description Video description.
+   * @param categoryId YouTube category ID.
+   * @param privacyStatus Video privacy status.
+   * @returns Promise resolving to the uploaded video ID.
+   */
+  private async uploadVideo(
+    videoPath: string,
+    title: string,
+    description: string,
+    categoryId: string,
+    privacyStatus: string,
+  ): Promise<string> {
+    const service = google.youtube({ version: 'v3', auth: this.auth! })
+
+    const response = await service.videos.insert({
+      part: ['snippet', 'status'],
+      requestBody: {
+        snippet: {
+          title,
+          description,
+          categoryId: categoryId,
+          // tags: ['tag1', 'tag2'], // Add tags if needed
+        },
+        status: {
+          privacyStatus: privacyStatus,
+        },
+      },
+      media: {
+        body: fs.createReadStream(videoPath),
+      },
+    })
+
+    console.log(
+      `Video uploaded successfully: https://youtu.be/${response.data.id}`,
+    )
+    return response.data.id || ''
   }
 
   async initializeAuth() {
@@ -226,9 +261,7 @@ export class YouTubeBatchUploader {
       const title = `Video Part ${partNumber}` // Or use first line of description: description.split('\n')[0]
 
       console.log(`Uploading ${file} as "${title}"...`)
-      await uploadVideo(
-        // biome-ignore lint/style/noNonNullAssertion: auth is initialized above
-        this.auth!,
+      await this.uploadVideo(
         videoPath,
         title,
         description,

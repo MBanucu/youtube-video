@@ -118,6 +118,9 @@ test(
         credentialsPath,
         videosDir: fakeVideosDir,
         descriptionsDir: fakeDescriptionsDir,
+        tokenPath,
+        categoryId: '22',
+        privacyStatus: 'private',
       })
 
       // Assertions

@@ -37,7 +37,7 @@ export class FakeGoogleServer {
     }
 
     // Generate fake video ID
-    const videoId = `fake-video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const videoId = `fake-video-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 
     // Store video data
     const videoData: VideoData = {

@@ -12,9 +12,18 @@ const consoleLogMock = mock(() => {})
 const fsPromisesWriteFileMock = mock(async () => {})
 
 // Mock google.youtube service
-const insertMock = mock(async () => ({
-  data: { id: 'fake-video-id' },
-}))
+const insertMock = mock(async (params: any) => {
+  const { media } = params
+  if (media && media.body) {
+    // Drain the stream to simulate consumption and ensure file closure
+    await new Promise((resolve, reject) => {
+      media.body.on('error', reject)
+      media.body.on('end', resolve)
+      media.body.resume() // Start flowing data to trigger 'end'
+    })
+  }
+  return { data: { id: 'fake-video-id' } }
+})
 const youtubeServiceMock = {
   videos: {
     insert: insertMock,

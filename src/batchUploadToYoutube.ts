@@ -5,6 +5,9 @@ import type { Credentials } from 'google-auth-library'
 import { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
+
+type YouTubeService = ReturnType<typeof google.youtube>
+
 import { paths } from './paths'
 import type { BatchUploadOptions, ClientCredentials } from './types'
 import { YouTubeUploadVerifier } from './verifyYoutubeUpload'
@@ -152,6 +155,49 @@ export class YouTubeBatchUploader {
     console.log('All uploads complete.')
   }
 
+  private async uploadVideoWithRetry(
+    service: YouTubeService,
+    videoPath: string,
+    title: string,
+    description: string,
+    categoryId: string,
+    privacyStatus: string,
+  ): Promise<{ data: youtube_v3.Schema$Video }> {
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        const response = await service.videos.insert({
+          part: ['snippet', 'status'],
+          requestBody: {
+            snippet: {
+              title,
+              description,
+              categoryId,
+            },
+            status: {
+              privacyStatus,
+            },
+          },
+          media: {
+            body: fs.createReadStream(videoPath),
+          },
+        })
+        return response
+      } catch (error) {
+        if (attempt < this.maxRetries) {
+          const delay = this.retryDelay * 2 ** attempt
+          console.log(
+            `Upload failed, retrying in ${delay}ms... (${attempt + 1}/${this.maxRetries})`,
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        } else {
+          throw error
+        }
+      }
+    }
+    // This should never be reached due to the throw in the catch block above
+    throw new Error('Failed to upload video')
+  }
+
   private async uploadVideo(
     videoPath: string,
     title: string,
@@ -171,39 +217,14 @@ export class YouTubeBatchUploader {
       auth: await this.getAuth(),
     })
 
-    // Type assertion needed due to complex Google API response types with Bun/Node differences
-    let response: { data: youtube_v3.Schema$Video } | undefined
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      try {
-        response = (await service.videos.insert({
-          part: ['snippet', 'status'],
-          requestBody: {
-            snippet: {
-              title,
-              description,
-              categoryId,
-            },
-            status: {
-              privacyStatus,
-            },
-          },
-          media: {
-            body: fs.createReadStream(videoPath),
-          },
-        })) as { data: youtube_v3.Schema$Video }
-        break
-      } catch (error) {
-        if (attempt < this.maxRetries) {
-          const delay = this.retryDelay * 2 ** attempt
-          console.log(
-            `Upload failed, retrying in ${delay}ms... (${attempt + 1}/${this.maxRetries})`,
-          )
-          await new Promise((resolve) => setTimeout(resolve, delay))
-        } else {
-          throw error
-        }
-      }
-    }
+    const response = await this.uploadVideoWithRetry(
+      service,
+      videoPath,
+      title,
+      description,
+      categoryId,
+      privacyStatus,
+    )
 
     const uploadedVideoId = response?.data.id || ''
     console.log(

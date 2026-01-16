@@ -1,7 +1,7 @@
 // test/verifyYoutubeUpload.test.ts
 
 import { expect, mock, test } from 'bun:test'
-import type { OAuth2Client } from 'google-auth-library'
+import { OAuth2Client } from 'google-auth-library'
 
 test('verifyVideo throws error when video is not found', async () => {
   const { startMockServer, stopMockServer } = await import(
@@ -38,6 +38,17 @@ test('verifyVideo throws error when video is not found', async () => {
   }
 })
 
+// Create a real OAuth2Client for making actual HTTP requests (redirected to mock server)
+const realOAuth2Client = new OAuth2Client({
+  clientId: 'dummy-client-id',
+  clientSecret: 'dummy-client-secret',
+  redirectUri: 'urn:ietf:wg:oauth:2.0:oob',
+})
+realOAuth2Client.setCredentials({
+  access_token: 'dummy-access-token',
+  refresh_token: 'dummy-refresh-token',
+})
+
 // Mock setup - OAuth2Client for testing
 const mockOAuth2Client = mock(
   (): Partial<OAuth2Client> => ({
@@ -53,53 +64,19 @@ const mockOAuth2Client = mock(
       } as any),
     ),
     request: mock(async (options: any): Promise<any> => {
-      console.log(
-        'Mock request to:',
-        options.url,
-        'method:',
-        options.method,
-        'params:',
-        options.params,
-      )
-      let url = options.url as string
-      if (options.params) {
-        const search = new URLSearchParams()
-        for (const [k, v] of Object.entries(options.params)) {
-          if (Array.isArray(v)) {
-            for (const val of v) {
-              search.append(k, val.toString())
-            }
-          } else {
-            search.append(k, String(v))
-          }
-        }
-        url += `?${search.toString()}`
-      }
-      if (url.startsWith('https://youtube.googleapis.com/')) {
-        url = url.replace(
-          'https://youtube.googleapis.com/',
-          'http://localhost:4000/',
+      // Replace YouTube API URLs with localhost mock server
+      if (
+        options.url &&
+        options.url.includes &&
+        options.url.includes('youtube.googleapis.com')
+      ) {
+        options.url = options.url.replace(
+          'https://youtube.googleapis.com',
+          'http://localhost:4000',
         )
       }
-      try {
-        const response = await fetch(url, {
-          method: options.method || 'GET',
-          headers: options.headers || {},
-          body: options.data,
-        })
-        const data = await response.text()
-        let parsed: Record<string, unknown> | { text: string }
-        try {
-          parsed = JSON.parse(data)
-        } catch {
-          parsed = { text: data }
-        }
-        console.log('Mock response status:', response.status, 'data:', parsed)
-        return { status: response.status, data: parsed }
-      } catch (error) {
-        console.log('Mock request error:', error)
-        throw error
-      }
+      // Call the real OAuth2Client.request method
+      return realOAuth2Client.request(options)
     }),
   }),
 )

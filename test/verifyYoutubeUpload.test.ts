@@ -15,7 +15,6 @@ test('verifyVideo throws error when video is not found', async () => {
   )
   const port = 4000
   await startMockServer(port)
-  process.env['YOUTUBE_ROOT_URL'] = `http://localhost:${port}/`
 
   // Create temp dir and fake credentials/token files
   const tempDir = mkdtempSync(join(tmpdir(), 'youtube-verify-test-'))
@@ -63,6 +62,5 @@ test('verifyVideo throws error when video is not found', async () => {
     ).rejects.toThrowError(`Video ${fakeVideoId} not found on channel`)
   } finally {
     stopMockServer(port)
-    delete process.env['YOUTUBE_ROOT_URL']
   }
 })

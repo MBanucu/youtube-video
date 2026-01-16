@@ -18,13 +18,10 @@ describe('YouTube Batch Upload Tests', () => {
 
   beforeAll(async () => {
     await startMockServer(port)
-    // Set environment variable to override rootUrl in the source code
-    process.env['YOUTUBE_ROOT_URL'] = `http://localhost:${port}/`
   })
 
   afterAll(() => {
     stopMockServer(port)
-    delete process.env['YOUTUBE_ROOT_URL']
   })
 
   test(

@@ -55,7 +55,7 @@ export const logger = new Logger()
 const envLogLevel = process.env['LOG_LEVEL']
 if (envLogLevel) {
   const level = parseInt(envLogLevel, 10)
-  if (!isNaN(level) && level >= 0 && level <= 3) {
+  if (!Number.isNaN(level) && level >= 0 && level <= 3) {
     logger.setLevel(level as LogLevel)
   }
 }

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { youtube_v3 } from 'googleapis'
 import tmp from 'tmp'
@@ -28,36 +28,35 @@ describe('YouTube Batch Upload Tests', () => {
     'main should authorize, find videos, filter/sort correctly, load descriptions, and upload with correct parameters',
     async () => {
       // Create temp dir and fake files
-      const tempDir = tmp.dirSync({
-        prefix: 'youtube-test-',
+      const videosDir = tmp.dirSync({
+        prefix: 'youtube-videos-',
         unsafeCleanup: true,
       })
-      const credentialsPath = join(tempDir.name, 'credentials.json')
-      const tokenPath = join(tempDir.name, 'token.json')
-      const fakeVideosDir = join(tempDir.name, 'videos')
-      const fakeDescriptionsDir = join(tempDir.name, 'descriptions')
-
-      mkdirSync(fakeVideosDir)
-      mkdirSync(fakeDescriptionsDir)
+      const descriptionsDir = tmp.dirSync({
+        prefix: 'youtube-descriptions-',
+        unsafeCleanup: true,
+      })
+      const credentialsPath = join(videosDir.name, 'credentials.json')
+      const tokenPath = join(videosDir.name, 'token.json')
 
       // Video files – include extra files to test filtering and sorting
-      writeFileSync(join(fakeVideosDir, 'part1.MTS'), '')
-      writeFileSync(join(fakeVideosDir, 'part2.MTS'), '')
-      writeFileSync(join(fakeVideosDir, 'part10.MTS'), '') // tests numeric sorting
-      writeFileSync(join(fakeVideosDir, 'other.MTS'), '') // should be ignored
-      writeFileSync(join(fakeVideosDir, 'intro.MTS'), '') // should be ignored
+      writeFileSync(join(videosDir.name, 'part1.MTS'), '')
+      writeFileSync(join(videosDir.name, 'part2.MTS'), '')
+      writeFileSync(join(videosDir.name, 'part10.MTS'), '') // tests numeric sorting
+      writeFileSync(join(videosDir.name, 'other.MTS'), '') // should be ignored
+      writeFileSync(join(videosDir.name, 'intro.MTS'), '') // should be ignored
 
       // Description files – different text so we can verify correct pairing
       writeFileSync(
-        join(fakeDescriptionsDir, 'part1-description_en.txt'),
+        join(descriptionsDir.name, 'part1-description_en.txt'),
         'English description for part 1',
       )
       writeFileSync(
-        join(fakeDescriptionsDir, 'part2-description_en.txt'),
+        join(descriptionsDir.name, 'part2-description_en.txt'),
         'English description for part 2',
       )
       writeFileSync(
-        join(fakeDescriptionsDir, 'part10-description_en.txt'),
+        join(descriptionsDir.name, 'part10-description_en.txt'),
         'English description for part 10',
       )
 
@@ -87,8 +86,8 @@ describe('YouTube Batch Upload Tests', () => {
 
       const uploader = new YouTubeBatchUploader({
         credentialsPath,
-        videosDir: fakeVideosDir,
-        descriptionsDir: fakeDescriptionsDir,
+        videosDir: videosDir.name,
+        descriptionsDir: descriptionsDir.name,
         tokenPath,
         categoryId: '22',
         privacyStatus: 'private',
@@ -148,19 +147,18 @@ describe('YouTube Batch Upload Tests', () => {
       })
 
       // Temp setup – only one video, no description file
-      const tempDir = tmp.dirSync({
-        prefix: 'youtube-retry-test-',
+      const videosDir = tmp.dirSync({
+        prefix: 'youtube-retry-videos-',
         unsafeCleanup: true,
       })
-      const credentialsPath = join(tempDir.name, 'credentials.json')
-      const tokenPath = join(tempDir.name, 'token.json')
-      const fakeVideosDir = join(tempDir.name, 'videos')
-      const fakeDescriptionsDir = join(tempDir.name, 'descriptions')
+      const descriptionsDir = tmp.dirSync({
+        prefix: 'youtube-retry-descriptions-',
+        unsafeCleanup: true,
+      })
+      const credentialsPath = join(videosDir.name, 'credentials.json')
+      const tokenPath = join(videosDir.name, 'token.json')
 
-      mkdirSync(fakeVideosDir)
-      mkdirSync(fakeDescriptionsDir)
-
-      writeFileSync(join(fakeVideosDir, 'part1.MTS'), '')
+      writeFileSync(join(videosDir.name, 'part1.MTS'), '')
 
       writeFileSync(
         credentialsPath,
@@ -187,8 +185,8 @@ describe('YouTube Batch Upload Tests', () => {
 
       const uploader = new YouTubeBatchUploader({
         credentialsPath,
-        videosDir: fakeVideosDir,
-        descriptionsDir: fakeDescriptionsDir,
+        videosDir: videosDir.name,
+        descriptionsDir: descriptionsDir.name,
         tokenPath,
         maxRetries: 2,
         retryDelay: 10,

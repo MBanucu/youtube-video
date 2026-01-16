@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { youtube_v3 } from 'googleapis'
+import tmp from 'tmp'
 import { startMockServer, stopMockServer } from './mockYoutubeServer'
 
 // Use actual YouTube Data API v3 types
@@ -28,11 +28,14 @@ describe('YouTube Batch Upload Tests', () => {
     'main should authorize, find videos, filter/sort correctly, load descriptions, and upload with correct parameters',
     async () => {
       // Create temp dir and fake files
-      const tempDir = mkdtempSync(join(tmpdir(), 'youtube-test-'))
-      const credentialsPath = join(tempDir, 'credentials.json')
-      const tokenPath = join(tempDir, 'token.json')
-      const fakeVideosDir = join(tempDir, 'videos')
-      const fakeDescriptionsDir = join(tempDir, 'descriptions')
+      const tempDir = tmp.dirSync({
+        prefix: 'youtube-test-',
+        unsafeCleanup: true,
+      })
+      const credentialsPath = join(tempDir.name, 'credentials.json')
+      const tokenPath = join(tempDir.name, 'token.json')
+      const fakeVideosDir = join(tempDir.name, 'videos')
+      const fakeDescriptionsDir = join(tempDir.name, 'descriptions')
 
       mkdirSync(fakeVideosDir)
       mkdirSync(fakeDescriptionsDir)
@@ -82,58 +85,54 @@ describe('YouTube Batch Upload Tests', () => {
         '../src/batchUploadToYoutube'
       )
 
-      try {
-        const uploader = new YouTubeBatchUploader({
-          credentialsPath,
-          videosDir: fakeVideosDir,
-          descriptionsDir: fakeDescriptionsDir,
-          tokenPath,
-          categoryId: '22',
-          privacyStatus: 'private',
-          verifyUploads: true,
-        })
-        const uploadResponses = await uploader.uploadBatch()
+      const uploader = new YouTubeBatchUploader({
+        credentialsPath,
+        videosDir: fakeVideosDir,
+        descriptionsDir: fakeDescriptionsDir,
+        tokenPath,
+        categoryId: '22',
+        privacyStatus: 'private',
+        verifyUploads: true,
+      })
+      const uploadResponses = await uploader.uploadBatch()
 
-        // === Strong assertions ===
-        // Verify specific videos were uploaded with correct properties
-        const uploadedVideos = uploadResponses.map((response) => response.data)
+      // === Strong assertions ===
+      // Verify specific videos were uploaded with correct properties
+      const uploadedVideos = uploadResponses.map((response) => response.data)
 
-        // Check that we have the expected videos by their properties
-        const videosPart1 = uploadedVideos.filter(
-          (v: YouTubeVideo) => v.snippet?.title === 'Video Part 1',
-        )
-        const videosPart2 = uploadedVideos.filter(
-          (v: YouTubeVideo) => v.snippet?.title === 'Video Part 2',
-        )
-        const videosPart10 = uploadedVideos.filter(
-          (v: YouTubeVideo) => v.snippet?.title === 'Video Part 10',
-        )
+      // Check that we have the expected videos by their properties
+      const videosPart1 = uploadedVideos.filter(
+        (v: YouTubeVideo) => v.snippet?.title === 'Video Part 1',
+      )
+      const videosPart2 = uploadedVideos.filter(
+        (v: YouTubeVideo) => v.snippet?.title === 'Video Part 2',
+      )
+      const videosPart10 = uploadedVideos.filter(
+        (v: YouTubeVideo) => v.snippet?.title === 'Video Part 10',
+      )
 
-        // Should have at least one of each
-        expect(videosPart1.length).toBeGreaterThan(0)
-        expect(videosPart2.length).toBeGreaterThan(0)
-        expect(videosPart10.length).toBeGreaterThan(0)
+      // Should have at least one of each
+      expect(videosPart1.length).toBeGreaterThan(0)
+      expect(videosPart2.length).toBeGreaterThan(0)
+      expect(videosPart10.length).toBeGreaterThan(0)
 
-        // Check that the expected descriptions are present
-        const hasPart1WithDesc = videosPart1.some(
-          (v: YouTubeVideo) =>
-            v.snippet?.description === 'English description for part 1',
-        )
-        const hasPart10WithDesc = videosPart10.some(
-          (v: YouTubeVideo) =>
-            v.snippet?.description === 'English description for part 10',
-        )
-        const hasPart2WithDesc = videosPart2.some(
-          (v: YouTubeVideo) =>
-            v.snippet?.description === 'English description for part 2',
-        )
+      // Check that the expected descriptions are present
+      const hasPart1WithDesc = videosPart1.some(
+        (v: YouTubeVideo) =>
+          v.snippet?.description === 'English description for part 1',
+      )
+      const hasPart10WithDesc = videosPart10.some(
+        (v: YouTubeVideo) =>
+          v.snippet?.description === 'English description for part 10',
+      )
+      const hasPart2WithDesc = videosPart2.some(
+        (v: YouTubeVideo) =>
+          v.snippet?.description === 'English description for part 2',
+      )
 
-        expect(hasPart1WithDesc).toBe(true)
-        expect(hasPart10WithDesc).toBe(true)
-        expect(hasPart2WithDesc).toBe(true)
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true })
-      }
+      expect(hasPart1WithDesc).toBe(true)
+      expect(hasPart10WithDesc).toBe(true)
+      expect(hasPart2WithDesc).toBe(true)
     },
     { timeout: 5000 },
   )
@@ -149,11 +148,14 @@ describe('YouTube Batch Upload Tests', () => {
       })
 
       // Temp setup – only one video, no description file
-      const tempDir = mkdtempSync(join(tmpdir(), 'youtube-retry-test-'))
-      const credentialsPath = join(tempDir, 'credentials.json')
-      const tokenPath = join(tempDir, 'token.json')
-      const fakeVideosDir = join(tempDir, 'videos')
-      const fakeDescriptionsDir = join(tempDir, 'descriptions')
+      const tempDir = tmp.dirSync({
+        prefix: 'youtube-retry-test-',
+        unsafeCleanup: true,
+      })
+      const credentialsPath = join(tempDir.name, 'credentials.json')
+      const tokenPath = join(tempDir.name, 'token.json')
+      const fakeVideosDir = join(tempDir.name, 'videos')
+      const fakeDescriptionsDir = join(tempDir.name, 'descriptions')
 
       mkdirSync(fakeVideosDir)
       mkdirSync(fakeDescriptionsDir)
@@ -183,35 +185,30 @@ describe('YouTube Batch Upload Tests', () => {
         '../src/batchUploadToYoutube'
       )
 
-      try {
-        const uploader = new YouTubeBatchUploader({
-          credentialsPath,
-          videosDir: fakeVideosDir,
-          descriptionsDir: fakeDescriptionsDir,
-          tokenPath,
-          maxRetries: 2,
-          retryDelay: 10,
-          verifyUploads: true,
-        })
-        const uploadResponses = await uploader.uploadBatch()
+      const uploader = new YouTubeBatchUploader({
+        credentialsPath,
+        videosDir: fakeVideosDir,
+        descriptionsDir: fakeDescriptionsDir,
+        tokenPath,
+        maxRetries: 2,
+        retryDelay: 10,
+        verifyUploads: true,
+      })
+      const uploadResponses = await uploader.uploadBatch()
 
-        // Verify the video was uploaded after retries
-        const uploadedVideos = uploadResponses.map(
-          (response) => response.data as YouTubeVideo,
-        )
+      // Verify the video was uploaded after retries
+      const uploadedVideos = uploadResponses.map(
+        (response) => response.data as YouTubeVideo,
+      )
 
-        // Find the video with empty description specifically
-        const video = uploadedVideos.find(
-          (v) =>
-            v.snippet?.title === 'Video Part 1' &&
-            v.snippet?.description === '',
-        )
-        expect(video).toBeDefined()
-        expect(video?.snippet?.categoryId).toBe('22') // default
-        expect(video?.status?.privacyStatus).toBe('private') // default
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true })
-      }
+      // Find the video with empty description specifically
+      const video = uploadedVideos.find(
+        (v) =>
+          v.snippet?.title === 'Video Part 1' && v.snippet?.description === '',
+      )
+      expect(video).toBeDefined()
+      expect(video?.snippet?.categoryId).toBe('22') // default
+      expect(video?.status?.privacyStatus).toBe('private') // default
     },
     { timeout: 10000 },
   )

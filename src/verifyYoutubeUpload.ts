@@ -3,7 +3,9 @@
 import type { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
+import { logger } from './logger'
 import type { YouTubePrivacyStatus } from './types'
+import { YouTubeAuthenticator } from './youtubeAuthenticator'
 
 type YouTubeService = ReturnType<typeof google.youtube>
 
@@ -15,10 +17,22 @@ export interface ExpectedVideoMetadata {
 }
 
 export class YouTubeUploadVerifier {
-  private auth: OAuth2Client
+  private authenticator: YouTubeAuthenticator
 
-  constructor(auth: OAuth2Client) {
-    this.auth = auth
+  constructor(credentialsPath: string, tokenPath?: string)
+  constructor(auth: OAuth2Client)
+  constructor(
+    credentialsPathOrAuth: string | OAuth2Client,
+    tokenPath?: string,
+  ) {
+    if (typeof credentialsPathOrAuth === 'string') {
+      this.authenticator = new YouTubeAuthenticator(
+        credentialsPathOrAuth,
+        tokenPath,
+      )
+    } else {
+      this.authenticator = new YouTubeAuthenticator(credentialsPathOrAuth)
+    }
   }
 
   private async fetchVideoData(
@@ -60,7 +74,7 @@ export class YouTubeUploadVerifier {
         if (attempt === maxAttempts) {
           throw error
         }
-        console.log(
+        logger.warn(
           `Failed to fetch video ${videoId}: ${error instanceof Error ? error.message : String(error)}. Retrying in ${delayMs}ms...`,
         )
         await new Promise((resolve) => setTimeout(resolve, delayMs))
@@ -78,7 +92,7 @@ export class YouTubeUploadVerifier {
   ): Promise<void> {
     const youtubeOptions: Parameters<typeof google.youtube>[0] = {
       version: 'v3',
-      auth: this.auth,
+      auth: await this.authenticator.getAuth(),
     }
 
     const service = google.youtube(youtubeOptions)
@@ -114,6 +128,6 @@ export class YouTubeUploadVerifier {
       )
     }
 
-    console.log(`Verification successful for video ${videoId}`)
+    logger.info(`Verification successful for video ${videoId}`)
   }
 }

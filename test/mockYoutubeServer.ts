@@ -1,28 +1,45 @@
 // test/mockYoutubeServer.ts
 import type { youtube_v3 } from 'googleapis'
+import { logger } from '../src/logger'
 
 let server: ReturnType<typeof Bun.serve> | null = null
-const uploadedVideos = new Map<string, youtube_v3.Schema$Video>()
-const sessions = new Map<string, youtube_v3.Schema$Video>()
-let insertFailureCount = 0
+
+// State per port to support concurrent tests
+const serverStates = new Map<
+  number,
+  {
+    uploadedVideos: Map<string, youtube_v3.Schema$Video>
+    sessions: Map<string, youtube_v3.Schema$Video>
+    insertFailureCount: number
+  }
+>()
 
 export async function startMockServer(port: number = 4000) {
-  uploadedVideos.clear()
-  sessions.clear()
+  // Initialize state for this port
+  const state = serverStates.get(port) || {
+    uploadedVideos: new Map<string, youtube_v3.Schema$Video>(),
+    sessions: new Map<string, youtube_v3.Schema$Video>(),
+    insertFailureCount: 0,
+  }
+  state.uploadedVideos.clear()
+  state.sessions.clear()
+  state.insertFailureCount = 0
+  serverStates.set(port, state)
 
   server = Bun.serve({
     port,
     async fetch(req) {
       const url = new URL(req.url)
       const pathname = url.pathname
+      const state = serverStates.get(port)!
 
       // Log for debugging tests
-      console.log(`Received: ${req.method} ${req.url}`)
+      logger.debug(`Received: ${req.method} ${req.url}`)
 
       // set-failures - POST /set-failures
       if (pathname === '/set-failures' && req.method === 'POST') {
         const body = (await req.json()) as { count?: number }
-        insertFailureCount = body.count || 0
+        state.insertFailureCount = body.count || 0
         return new Response(JSON.stringify({ success: true }), {
           headers: { 'Content-Type': 'application/json' },
         })
@@ -82,14 +99,14 @@ export async function startMockServer(port: number = 4000) {
       // videos.list - GET /youtube/v3/videos?part=...&id=...
       if (pathname === '/youtube/v3/videos' && req.method === 'GET') {
         const id = url.searchParams.get('id')
-        console.log('List request id:', id, 'uploadedVideos keys:', [
-          ...uploadedVideos.keys(),
+        logger.debug('List request id:', id, 'uploadedVideos keys:', [
+          ...state.uploadedVideos.keys(),
         ])
         const items: youtube_v3.Schema$Video[] = []
         if (id) {
           const ids = id.split(',')
           for (const videoId of ids) {
-            const video = uploadedVideos.get(videoId)
+            const video = state.uploadedVideos.get(videoId)
             if (video) {
               items.push(video)
             }
@@ -115,7 +132,7 @@ export async function startMockServer(port: number = 4000) {
       if (pathname === '/upload/youtube/v3/videos' && req.method === 'POST') {
         const uploadType = url.searchParams.get('uploadType')
         const contentType = req.headers.get('content-type') || ''
-        console.log(
+        logger.debug(
           'videos.insert, uploadType:',
           uploadType,
           'contentType:',
@@ -127,7 +144,7 @@ export async function startMockServer(port: number = 4000) {
           let metadata: Record<string, unknown> = {}
           try {
             metadata = (await req.json()) as Record<string, unknown>
-            console.log('Resumable metadata:', metadata)
+            logger.debug('Resumable metadata:', metadata)
           } catch {
             // fallback empty
           }
@@ -152,8 +169,8 @@ export async function startMockServer(port: number = 4000) {
           }
 
           const sessionId = crypto.randomUUID()
-          sessions.set(sessionId, video)
-          uploadedVideos.set(videoId, video)
+          state.sessions.set(sessionId, video)
+          state.uploadedVideos.set(videoId, video)
 
           return new Response('', {
             status: 200,
@@ -165,8 +182,8 @@ export async function startMockServer(port: number = 4000) {
 
         if (uploadType === 'multipart') {
           // Handle configured failures
-          if (insertFailureCount > 0) {
-            insertFailureCount--
+          if (state.insertFailureCount > 0) {
+            state.insertFailureCount--
             return new Response(
               JSON.stringify({
                 error: {
@@ -204,7 +221,7 @@ export async function startMockServer(port: number = 4000) {
               },
               status: metadata.status || { privacyStatus: 'private' },
             }
-            uploadedVideos.set(videoId, video)
+            state.uploadedVideos.set(videoId, video)
             return new Response(JSON.stringify(video), {
               status: 200,
               headers: { 'Content-Type': 'application/json' },
@@ -216,25 +233,25 @@ export async function startMockServer(port: number = 4000) {
         if (boundaryMatch?.[1]) {
           const boundary = `--${boundaryMatch[1].replace(/"/g, '')}`
           const bodyText = await req.text()
-          console.log('Manual parsing, bodyText length:', bodyText.length)
+          logger.debug('Manual parsing, bodyText length:', bodyText.length)
           const parts = bodyText
             .split(boundary)
             .filter((p) => p.trim() && !p.includes('--'))
-          console.log('Parts:', parts.length)
+          logger.debug('Parts:', parts.length)
           let metadata: Record<string, unknown> = {}
           for (const part of parts) {
-            console.log('Part header:', part.slice(0, 200))
+            logger.debug('Part header:', part.slice(0, 200))
             if (part.includes('application/json')) {
               const jsonStart = part.indexOf('\r\n\r\n') + 4
               const jsonStr = part
                 .slice(jsonStart, part.lastIndexOf('\r\n--'))
                 .trim()
-              console.log('JSON str:', jsonStr)
+              logger.debug('JSON str:', jsonStr)
               try {
                 metadata = JSON.parse(jsonStr)
-                console.log('Parsed metadata:', metadata)
+                logger.debug('Parsed metadata:', metadata)
               } catch (e) {
-                console.log('Parse error:', e)
+                logger.debug('Parse error:', e)
               }
             }
           }
@@ -255,8 +272,8 @@ export async function startMockServer(port: number = 4000) {
               privacyStatus: 'private',
             },
           }
-          console.log('Created video:', video.id, video.snippet?.title)
-          uploadedVideos.set(videoId, video)
+          logger.debug('Created video:', video.id, video.snippet?.title)
+          state.uploadedVideos.set(videoId, video)
 
           return new Response(JSON.stringify(video), {
             status: 200,
@@ -272,12 +289,12 @@ export async function startMockServer(port: number = 4000) {
           return new Response('Invalid session ID', { status: 400 })
         }
 
-        const video = sessions.get(sessionId)
+        const video = state.sessions.get(sessionId)
         if (!video) {
           return new Response('Session not found', { status: 404 })
         }
 
-        console.log('PUT to resumable, returning video:', video)
+        logger.debug('PUT to resumable, returning video:', video)
 
         // Consume the media stream
         if (req.body) {
@@ -288,7 +305,7 @@ export async function startMockServer(port: number = 4000) {
         }
 
         // Assume single-chunk upload (common for test files)
-        sessions.delete(sessionId)
+        state.sessions.delete(sessionId)
         return new Response(JSON.stringify(video), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -299,14 +316,16 @@ export async function startMockServer(port: number = 4000) {
     },
   })
 
-  console.log(`\n🚀 Mock YouTube API server running at ${server.url}\n`)
+  logger.info(`Mock YouTube API server running at ${server.url}`)
   return server
 }
 
-export function stopMockServer() {
+export function stopMockServer(port: number = 4000) {
   if (server) {
     server.stop(true)
-    console.log('🛑 Mock YouTube API server stopped')
+    logger.info('Mock YouTube API server stopped')
     server = null
+    // Clean up state for this port
+    serverStates.delete(port)
   }
 }

@@ -1,66 +1,29 @@
-import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { startMockServer, stopMockServer } from './mockYoutubeServer'
 
 // Use actual YouTube Data API v3 types
 type YouTubeVideo = youtube_v3.Schema$Video
 
-// Create a real OAuth2Client for making actual HTTP requests (redirected to mock server)
-const realOAuth2Client = new OAuth2Client({
-  clientId: 'dummy-client-id',
-  clientSecret: 'dummy-client-secret',
-  redirectUri: 'urn:ietf:wg:oauth:2.0:oob',
-})
-realOAuth2Client.setCredentials({
-  access_token: 'dummy-access-token',
-  refresh_token: 'dummy-refresh-token',
-})
+// Setup the Google Auth mock
+import { setupGoogleAuthMock } from './youtubeTestHelpers'
 
-// Shared mock setup for all tests
-const sharedOAuth2ClientMock = mock(() => ({
-  credentials: {
-    access_token: 'mock-token',
-    expiry_date: Date.now() + 86400000,
-  },
-  generateAuthUrl: mock(() => 'http://mock-auth-url'),
-  getToken: mock(() =>
-    Promise.resolve({ tokens: { access_token: 'mock-token' } }),
-  ),
-  request: mock(async (options: any) => {
-    // Replace YouTube API URLs with localhost mock server
-    if (
-      options.url &&
-      options.url.includes &&
-      options.url.includes('youtube.googleapis.com')
-    ) {
-      options.url = options.url.replace(
-        'https://youtube.googleapis.com',
-        'http://localhost:4000',
-      )
-    }
-    // Call the real OAuth2Client.request method
-    return realOAuth2Client.request(options)
-  }),
-}))
-
-mock.module('google-auth-library', () => ({
-  OAuth2Client: sharedOAuth2ClientMock,
-}))
+setupGoogleAuthMock()
 
 describe('YouTube Batch Upload Tests', () => {
+  const port = 4000
+
   beforeAll(async () => {
-    const port = 4000
     await startMockServer(port)
     // Set environment variable to override rootUrl in the source code
     process.env['YOUTUBE_ROOT_URL'] = `http://localhost:${port}/`
   })
 
   afterAll(() => {
-    stopMockServer()
+    stopMockServer(port)
     delete process.env['YOUTUBE_ROOT_URL']
   })
 

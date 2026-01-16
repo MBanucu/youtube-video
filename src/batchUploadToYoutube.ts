@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
 import type { GaxiosResponseWithHTTP2 } from 'googleapis-common'
+import type { YouTubePrivacyStatus } from './types'
 
 type YouTubeService = ReturnType<typeof google.youtube>
 
@@ -165,10 +166,10 @@ export class YouTubeBatchUploader {
   private async uploadVideoWithRetry(
     service: YouTubeService,
     videoPath: string,
-    title: string,
-    description: string,
-    categoryId: string,
-    privacyStatus: string,
+    title: NonNullable<youtube_v3.Schema$VideoSnippet['title']>,
+    description: NonNullable<youtube_v3.Schema$VideoSnippet['description']>,
+    categoryId: NonNullable<youtube_v3.Schema$VideoSnippet['categoryId']>,
+    privacyStatus: YouTubePrivacyStatus,
   ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -207,10 +208,10 @@ export class YouTubeBatchUploader {
 
   private async uploadVideo(
     videoPath: string,
-    title: string,
-    description: string,
-    categoryId: string,
-    privacyStatus: string,
+    title: NonNullable<youtube_v3.Schema$VideoSnippet['title']>,
+    description: NonNullable<youtube_v3.Schema$VideoSnippet['description']>,
+    categoryId: NonNullable<youtube_v3.Schema$VideoSnippet['categoryId']>,
+    privacyStatus: YouTubePrivacyStatus,
     verify?: boolean,
   ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
     const service = google.youtube({
@@ -238,7 +239,7 @@ export class YouTubeBatchUploader {
         title,
         description,
         categoryId,
-        privacyStatus: privacyStatus as 'public' | 'private' | 'unlisted',
+        privacyStatus,
       })
     }
 

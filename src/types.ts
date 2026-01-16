@@ -1,12 +1,14 @@
 // src/types.ts - Type definitions for the YouTube upload functionality
 
+export type YouTubePrivacyStatus = 'public' | 'private' | 'unlisted'
+
 export interface BatchUploadOptions {
   credentialsPath: string
   videosDir?: string
   descriptionsDir?: string
   tokenPath?: string
   categoryId?: string
-  privacyStatus?: string
+  privacyStatus?: YouTubePrivacyStatus
   maxRetries?: number
   retryDelay?: number
   verifyUploads?: boolean

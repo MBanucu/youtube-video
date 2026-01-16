@@ -3,14 +3,15 @@
 import type { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
+import type { YouTubePrivacyStatus } from './types'
 
 type YouTubeService = ReturnType<typeof google.youtube>
 
 export interface ExpectedVideoMetadata {
-  title: string
-  description: string
-  categoryId: string
-  privacyStatus: 'public' | 'private' | 'unlisted'
+  title: NonNullable<youtube_v3.Schema$VideoSnippet['title']>
+  description: NonNullable<youtube_v3.Schema$VideoSnippet['description']>
+  categoryId: NonNullable<youtube_v3.Schema$VideoSnippet['categoryId']>
+  privacyStatus: YouTubePrivacyStatus
 }
 
 export class YouTubeUploadVerifier {

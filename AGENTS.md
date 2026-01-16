@@ -1,19 +1,41 @@
 # AGENTS.md - YouTube Video Automation Project
 
-This file contains essential information for AI coding agents working on this YouTube video automation project. It includes build/lint/test commands, code style guidelines, and development practices.
+This file contains comprehensive information for AI coding agents working on this YouTube video automation project. It includes detailed build/lint/test commands, extensive code style guidelines, complete project architecture overview, and thorough documentation of all patterns and practices.
+
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Project Architecture](#project-architecture)
+3. [Important Files & Directories](#important-files--directories)
+4. [Build/Lint/Test Commands](#buildlinttest-commands)
+5. [Code Style Guidelines](#code-style-guidelines)
+6. [Framework-Specific Guidelines](#framework-specific-guidelines)
+7. [Common Patterns & Best Practices](#common-patterns--best-practices)
+8. [Development Workflow](#development-workflow)
+9. [AI Assistant Integration](#ai-assistant-integration)
 
 ## Project Overview
 
 This is a TypeScript project using Bun runtime for automating YouTube video processing tasks including:
-- Video splitting and concatenation
-- Audio extraction and transcription
-- AI-powered description generation
-- Batch processing workflows
+- Video splitting and concatenation with precise timing
+- Audio extraction and WAV conversion
+- AI-powered transcription using faster-whisper
+- AI-powered description generation using OpenCode CLI
+- Batch processing workflows with progress tracking
+- YouTube upload with OAuth2 authentication and metadata verification
 
-## Project Architecture Overview
+**Key Features:**
+- **Zero-config setup**: Works out-of-the-box with sensible defaults
+- **Type-safe**: Full TypeScript support with strict type checking
+- **Performance optimized**: Uses Bun's fast runtime and optimized APIs
+- **CI/CD ready**: Comprehensive test suite with GitHub Actions integration
+- **Error resilient**: Exponential backoff retry logic and comprehensive error handling
+
+## Project Architecture
 
 ### High-Level Architecture
-The project follows a modular, pipeline-based architecture designed for automated video processing workflows. It consists of several interconnected components that form a complete video-to-YouTube pipeline:
+
+The project follows a modular, pipeline-based architecture designed for automated video processing workflows:
 
 ```
 Raw Video Files → Video Processing → Audio Processing → AI Processing → YouTube Upload
@@ -23,489 +45,1271 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
                                                    generation       logic
 ```
 
-### Key Components
+**Data Flow:**
+1. **Input**: Raw `.MTS` video files from `videosDir`
+2. **Processing**: FFmpeg-based splitting and concatenation with precise timestamps
+3. **Audio**: WAV extraction for AI transcription (Python + faster-whisper)
+4. **AI**: Description generation using OpenCode CLI with multiple languages
+5. **Upload**: YouTube API v3 integration with OAuth2 and verification
 
-1. **Video Processing Layer** (`*-mts.ts` files)
-   - Handles video file operations using FFmpeg
-   - Supports precise splitting by duration/timestamps
-   - Concatenation of multiple video segments
-   - Duration calculation and validation
+### Core Architectural Principles
 
-2. **Audio Processing Layer** (`*-wav.ts` files)
-   - Extracts audio tracks from video files
-   - Converts to WAV format for transcription
-   - Manages temporary file cleanup
-
-3. **AI Processing Layer** (External integrations)
-   - Transcription using faster-whisper (Python)
-   - Description generation using OpenCode CLI
-   - Batch processing with conditional execution
-
-4. **YouTube Integration Layer** (`batchUploadToYoutube.ts`)
-   - OAuth2 authentication with token persistence
-   - Batch upload with configurable retry logic
-   - Metadata management (titles, descriptions, privacy settings)
-   - Exponential backoff for network resilience
-
-5. **YouTube Upload Verification Layer** (`verifyYoutubeUpload.ts`)
-   - Post-upload metadata validation using YouTube API polling
-   - Configurable retry attempts with exponential backoff
-   - Comprehensive error handling and logging
-   - Validates title, description, category, and privacy status
-
-6. **Configuration & Types Layer** (`types.ts`, `paths.ts`)
-   - Strongly typed configuration objects
-   - Path management with environment flexibility
-   - Interface definitions for all major operations
-
-### Design Principles
 - **Functional Programming**: Pure functions with minimal side effects
 - **Configuration-Driven**: Complex operations parameterized via options objects
-- **Error Resilience**: Comprehensive error handling with descriptive messages
-- **Performance Awareness**: Streaming for large files, conditional heavy operations
+- **Error Resilience**: Comprehensive error handling with exponential backoff
+- **Streaming I/O**: Large file handling without memory issues
 - **Testability**: Modular design enabling comprehensive unit testing
+- **Type Safety**: Strict TypeScript with no `any` types in production code
 
-## Important Files, Directories, and Modules
+### Key Components
+
+#### 1. Video Processing Layer (`*-mts.ts` files)
+**Purpose**: Handle video file operations using FFmpeg with surgical precision.
+
+**Components:**
+- `split_video_precise.ts`: Duration-based video splitting with frame accuracy
+- `concat-mts.ts`: Multi-video concatenation with metadata preservation
+- `split_video_precise_check.ts`: Validation and quality assurance for splits
+
+**Key Features:**
+- Precise timestamp-based splitting (e.g., `00:12:34.567`)
+- Duration validation and overlap detection
+- Temporary file cleanup and error recovery
+- FFmpeg command construction with shell injection prevention
+
+#### 2. Audio Processing Layer (`*-wav.ts` files)
+**Purpose**: Extract audio tracks and prepare for AI transcription.
+
+**Components:**
+- `extract-wav.ts`: High-quality WAV extraction from video files
+
+**Key Features:**
+- Lossless audio extraction using FFmpeg
+- WAV format optimization for speech recognition
+- Automatic file cleanup and validation
+- Bun.spawn() integration for performance
+
+#### 3. AI Processing Layer (External integrations)
+**Purpose**: Leverage AI for content enhancement and automation.
+
+**Components:**
+- `batchTranscribe.test.ts`: Python faster-whisper integration
+- `batchGenerateDescription.test.ts`: OpenCode CLI description generation
+
+**Key Features:**
+- Multi-language transcription support
+- Contextual description generation
+- Conditional execution (CI-only for performance)
+- Error handling for external process failures
+
+#### 4. YouTube Integration Layer (`batchUploadToYoutube.ts`)
+**Purpose**: Complete YouTube upload workflow with verification.
+
+**Key Classes:**
+- `YouTubeBatchUploader`: Main upload orchestrator
+- `YouTubeUploadVerifier`: Post-upload metadata validation
+
+**Features:**
+- OAuth2 authentication with automatic token persistence
+- Batch upload with configurable retry logic (exponential backoff)
+- Metadata validation (title, description, category, privacy)
+- Progress tracking and error reporting
+- Rate limit handling and quota management
+
+#### 5. Configuration & Types Layer (`types.ts`, `paths.ts`)
+**Purpose**: Strongly typed configuration and path management.
+
+**Key Interfaces:**
+```typescript
+interface BatchUploadOptions {
+  credentialsPath: string
+  videosDir?: string
+  descriptionsDir?: string
+  tokenPath?: string
+  categoryId?: string     // YouTube category ID
+  privacyStatus?: 'public' | 'private' | 'unlisted'
+  maxRetries?: number     // Default: 3
+  retryDelay?: number     // Base delay in ms, default: 1000
+}
+
+interface ClientCredentials {
+  clientId: string
+  clientSecret: string
+  redirectUri: string
+}
+```
+
+## Important Files & Directories
 
 ### Core Source Files (`src/`)
 
-- **`batchUploadToYoutube.ts`**: Main YouTube uploader class with OAuth2 authentication, batch processing, and retry logic. The primary entry point for YouTube operations.
-- **`verifyYoutubeUpload.ts`**: Post-upload verification system that polls YouTube API to validate uploaded video metadata
-- **`types.ts`**: Contains all TypeScript interfaces and types used across the project, including `BatchUploadOptions`, `ClientCredentials`, and YouTube API response types.
-- **`paths.ts`**: Centralizes path configurations and default directories for videos, descriptions, and outputs.
-- **`utils.ts`**: Shared utility functions for common operations like file validation, duration parsing, and error formatting.
+| File | Purpose | Key Functions |
+|------|---------|---------------|
+| `batchUploadToYoutube.ts` | Main YouTube uploader with OAuth2 and batch processing | `uploadBatch()`, `uploadVideoWithRetry()`, `verifyVideo()` |
+| `verifyYoutubeUpload.ts` | Post-upload verification system | `verifyVideo()`, `fetchVideoData()` |
+| `types.ts` | TypeScript interfaces and type definitions | `BatchUploadOptions`, `ExpectedVideoMetadata` |
+| `paths.ts` | Path configuration and directory management | Path utilities and defaults |
+| `utils.ts` | Shared utility functions | File validation, error formatting |
 
 ### Test Infrastructure (`test/`)
 
-- **`batchUploadToYoutube.test.ts`**: Comprehensive tests for YouTube upload functionality, including auth, batch processing, and retry scenarios.
-- **`batchGenerateDescription.test.ts`**: Tests for AI-powered description generation (runs only in CI due to external dependencies).
-- **`batchTranscribe.test.ts`**: Tests for audio transcription workflows.
-- **`runTranscribe.test.ts`**: Individual transcription test cases.
-- **`utils.ts`**: Test utilities including `runHeavyTest` for conditional execution based on CI environment.
-- **`fakeGoogleServer.ts`**: Mock YouTube API server for testing with realistic API simulation
+| File | Purpose | Test Focus |
+|------|---------|------------|
+| `batchUploadToYoutube.test.ts` | YouTube upload functionality | Auth, batch processing, retries, API responses |
+| `verifyYoutubeUpload.test.ts` | Upload verification system | Video existence checking, metadata validation |
+| `fakeGoogleServer.ts` | YouTube API mocking | HTTP response simulation, error scenarios |
+| `utils.ts` | Test utilities | `runHeavyTest` for conditional execution |
+| `*-mts.test.ts` | Video processing tests | FFmpeg integration, file operations |
+| `extract-wav.test.ts` | Audio extraction tests | WAV conversion, file validation |
 
-### Test Data and Assets (`testdata/`)
+### Test Data & Assets (`testdata/`)
 
-- **`.MTS` files**: Sample video files for testing video processing operations.
-- **`.txt` files**: Expected output files for transcription and description tests.
+- **`.MTS` files**: Sample video files for processing tests
+- **`.txt` files**: Expected transcription and description outputs
 
 ### Configuration Files
 
-- **`tsconfig.json`**: TypeScript configuration with Bun-compatible settings, path aliases (`@/*`, `@test/*`), and strict mode enabled.
-- **`biome.json`**: Biome configuration for linting and formatting with 2-space indentation, single quotes, and ASI-compliant semicolons.
-- **`lefthook.yml`**: Git hooks configuration for pre-commit and pre-push quality checks.
-- **`package.json`**: Project metadata, scripts, and dependencies managed by Bun.
+| File | Purpose | Key Settings |
+|------|---------|--------------|
+| `biome.json` | Linting and formatting | Single quotes, 2-space indent, custom rules |
+| `tsconfig.json` | TypeScript compilation | Strict mode, Bun compatibility, path aliases |
+| `lefthook.yml` | Git hooks | Pre-commit: fast tests + linting, Pre-push: full suite |
+| `package.json` | Dependencies and scripts | Bun runtime, Google APIs, FFmpeg integration |
 
-### CI/CD Infrastructure (`.github/`)
+### CI/CD Infrastructure (`.github/workflows/`)
 
-- **`workflows/test.yml`**: GitHub Actions workflow with matrix testing, conditional concurrency, and setup for FFmpeg/Python dependencies.
+- **`test.yml`**: Matrix testing strategy with FFmpeg/Python setup
+- **Conditional concurrency**: Prevents redundant CI runs
+- **Dependency caching**: Optimized build performance
 
-### External Dependencies and Tools
+### External Dependencies & Tools
 
-- **FFmpeg**: Used for video splitting, concatenation, and audio extraction.
-- **Python + faster-whisper**: For AI-powered audio transcription.
-- **OpenCode CLI**: For generating video descriptions using AI.
-- **Bun runtime**: JavaScript/TypeScript execution.
-- **Google APIs**: YouTube Data API v3 for video uploads and metadata management.
+| Tool | Purpose | Integration |
+|------|---------|-------------|
+| **FFmpeg** | Video/audio processing | `Bun.spawn()` with command arrays |
+| **Python + faster-whisper** | AI transcription | Subprocess communication |
+| **OpenCode CLI** | AI description generation | External command execution |
+| **Bun runtime** | Fast JavaScript execution | Native APIs, optimized I/O |
+| **Google APIs** | YouTube integration | OAuth2, Data API v3 |
 
 ## Build/Lint/Test Commands
 
 ### Dependencies & Setup
 ```bash
 bun install                    # Install all dependencies
+bun install -d                 # Install only dev dependencies
+bun update                     # Update dependencies
 ```
 
 ### Code Quality Checks
 ```bash
-bun run check                  # Run linting, formatting, and fix issues (Biome)
+bun run check                  # Run linting, formatting, and type checking (comprehensive)
 bun run lint                   # Lint code only (Biome)
 bun run fmt                    # Format code only (Biome)
-bun tsc --noEmit              # TypeScript type checking
+bun tsc --noEmit              # TypeScript type checking only
 bun run knip                  # Check for unused dependencies/code
 ```
 
-### Testing
+### Testing Commands
+
+#### Run All Tests
 ```bash
-bun test                       # Run all tests concurrently
-bun test <file>               # Run a specific test file
-bun test --concurrent <file>  # Run specific test with concurrent execution
+bun test                       # Run all tests concurrently (fast mode)
+bun test --verbose            # Run with detailed output
 ```
 
-**Test Discovery**: Tests are automatically discovered using patterns `**/*.test.{js,mjs,cjs,ts,mts,cts,jsx,tsx}` and `**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}`. Each test file runs in parallel in CI.
+#### Run Specific Tests
+```bash
+# Run single test file
+bun test test/batchUploadToYoutube.test.ts
 
-**Running Single Tests**: Use `bun test <path/to/testfile.test.ts>` to run individual test files. For performance-heavy tests like transcription, they are conditionally skipped locally (run only in CI) using environment checks.
+# Run multiple specific files
+bun test test/extract-wav.test.ts test/concat-mts.test.ts
 
-**Conditional Test Execution**: Use `runHeavyTest` from `test/utils.ts` for tests that should run concurrently in CI but skip locally:
+# Run with coverage (if configured)
+bun test --coverage
+```
+
+#### Run Tests by Pattern
+```bash
+# Run all video processing tests
+bun test *-mts.test.ts
+
+# Run all audio tests
+bun test *-wav.test.ts
+
+# Run YouTube integration tests
+bun test *youtube*.test.ts
+```
+
+#### Conditional Test Execution
+Heavy tests (transcription, description generation) run only in CI:
 ```typescript
-import { runHeavyTest } from './utils'
+import { runHeavyTest } from './test/utils'
 
-runHeavyTest('functionName - describes what it does', async () => { ... }, { timeout: 300000 })
+runHeavyTest('AI transcription workflow', async () => {
+  // Only runs in CI environment
+}, { timeout: 300000 })
 ```
 
-### CI Pipeline
+### CI Pipeline Commands
 The project uses GitHub Actions with:
-- Automated test matrix (one job per test file)
-- Linting and type checking
-- Dependency caching
-- FFmpeg, Python, and OpenCode CLI setup
+- **Matrix testing**: Each test file runs in parallel
+- **Conditional execution**: Heavy tests skip locally
+- **Artifact collection**: Test results and coverage reports
+
+### Development Commands
+```bash
+# Full pre-commit checks (mimics git hooks)
+bun run check && bun test --concurrent
+
+# Quick iteration (skip heavy tests)
+bun run lint && bun tsc --noEmit
+
+# Clean install and verify
+rm -rf node_modules bun.lock && bun install && bun test
+```
 
 ## Code Style Guidelines
 
 ### TypeScript Configuration
-- **Target**: ESNext
-- **Module**: Preserve (Bun-compatible)
-- **Strict Mode**: Enabled
-- **Path Aliases**: `@/*` → `src/*`, `@test/*` → `test/*`
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@test/*": ["test/*"]
+    }
+  }
+}
+```
 
-### Formatting (Biome)
-- **Indentation**: 2 spaces
-- **Quotes**: Single quotes (`'`)
-- **Semicolons**: As needed (ASI-compliant)
-- **Line Width**: Default (120 characters)
-- **Import Ordering**: Node.js built-ins first, then project modules
+### Biome Configuration
+```json
+{
+  "linter": {
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "useLiteralKeys": "off"  // Allow bracket notation for env vars
+      },
+      "suspicious": {
+        "noControlCharactersInRegex": "off"
+      }
+    }
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "quoteStyle": "single",
+    "semicolons": "asNeeded"
+  }
+}
+```
 
 ### Import/Export Patterns
+
+#### Node.js Built-ins
 ```typescript
-// Node.js built-ins (use 'node:' prefix for Bun compatibility)
-import { join } from 'node:path'
-import { existsSync, mkdirSync } from 'node:fs'
+// Correct: Use node: prefix for Bun compatibility
+import { join, resolve } from 'node:path'
+import { createReadStream } from 'node:fs'
+import { tmpdir, platform } from 'node:os'
 
-// Bun runtime APIs
-import { spawn } from 'bun'
+// Incorrect: Will work but less explicit
+import { join } from 'path'
+```
 
-// Project modules with path aliases
-import { someFunction } from '@/utils'
-import { testHelper } from '@test/helpers'
+#### Bun Runtime APIs
+```typescript
+// Use Bun's optimized APIs for performance
+import { spawn, file, write } from 'bun'
+
+// File I/O optimization
+const content = await Bun.file('config.json').text()
+await Bun.write('output.txt', data)
+```
+
+#### Project Modules
+```typescript
+// Use path aliases for clean imports
+import { BatchUploadOptions } from '@/types'
+import { runHeavyTest } from '@test/utils'
 
 // Third-party libraries
+import { google } from 'googleapis'
 import yargs from 'yargs'
+```
 
-// Object exports preferred for related functionality
+#### Export Patterns
+```typescript
+// Object exports for related functionality
 export const config = {
-  apiUrl: 'https://api.example.com',
+  apiUrl: process.env['API_URL'] || 'https://api.example.com',
   timeout: 5000,
+  retries: 3,
+}
+
+// Named exports for utilities
+export function validatePath(path: string): boolean {
+  return path.startsWith('/') && !path.includes('..')
+}
+
+// Default export for main classes
+export default class YouTubeBatchUploader {
+  // Implementation
 }
 ```
 
 ### Naming Conventions
-- **Files**: kebab-case (`video-processor.ts`, `extract-wav.ts`)
-- **Functions/Variables**: camelCase (`extractWavFromVideo`, `outputPath`)
-- **Types/Interfaces**: PascalCase (`VideoConfig`, `ProcessingOptions`)
-- **Constants**: UPPER_SNAKE_CASE (`MAX_RETRIES = 3`)
-- **Classes**: PascalCase with descriptive names
 
-### Error Handling
+#### Files & Directories
 ```typescript
-// Throw descriptive errors
-if (Number.isNaN(duration)) {
-  throw new Error(`Unable to get duration for ${file}`)
+// kebab-case for files
+video-processor.ts
+extract-wav.ts
+batch-upload-to-youtube.ts
+
+// PascalCase for directories (if needed)
+src/
+test/
+TestData/
+```
+
+#### Functions & Variables
+```typescript
+// camelCase for functions and variables
+function extractWavFromVideo(inputVideo: string, outputWav: string): boolean
+const outputPath = join(tmpdir(), 'output.wav')
+let retryCount = 0
+
+// Private members with underscore prefix
+class VideoProcessor {
+  private _config: Config
+  private _tempFiles: string[] = []
+}
+```
+
+#### Types & Interfaces
+```typescript
+// PascalCase for types
+interface BatchUploadOptions {
+  videosDir: string
+  categoryId: string
 }
 
-// Use try/catch for async operations
-try {
-  const result = await processVideo(input)
-  return result
-} catch (error) {
-  throw new Error(`Video processing failed: ${error.message}`)
+type VideoProcessingResult = {
+  success: boolean
+  outputPath?: string
+  error?: string
+}
+
+// Generic type parameters
+type ApiResponse<T> = {
+  data: T
+  status: number
+  message?: string
+}
+```
+
+#### Constants
+```typescript
+// UPPER_SNAKE_CASE for constants
+const MAX_RETRIES = 3
+const DEFAULT_TIMEOUT = 30000
+const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
+
+// Magic numbers get named constants
+const BUFFER_SIZE = 64 * 1024
+const FRAME_RATE = 30
+```
+
+#### Classes
+```typescript
+class YouTubeBatchUploader {
+  // Implementation
+}
+
+class VideoProcessor {
+  // Implementation
+}
+```
+
+### Error Handling Patterns
+
+#### Synchronous Errors
+```typescript
+function validateVideoFile(filePath: string): void {
+  if (!existsSync(filePath)) {
+    throw new Error(`Video file not found: ${filePath}`)
+  }
+
+  if (!filePath.endsWith('.MTS')) {
+    throw new Error(`Invalid video format. Expected .MTS, got: ${filePath}`)
+  }
+}
+```
+
+#### Asynchronous Errors with Retry
+```typescript
+async function uploadWithRetry(videoPath: string, maxRetries: number): Promise<void> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await uploadVideo(videoPath)
+      return // Success
+    } catch (error: unknown) {
+      if (attempt === maxRetries) {
+        throw error // Final failure
+      }
+
+      const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
+      console.log(`Upload failed, retrying in ${delay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+}
+```
+
+#### Error Types and Classification
+```typescript
+// Custom error types for better error handling
+class ValidationError extends Error {
+  constructor(message: string, public field: string) {
+    super(message)
+    this.name = 'ValidationError'
+  }
+}
+
+class NetworkError extends Error {
+  constructor(message: string, public statusCode?: number) {
+    super(message)
+    this.name = 'NetworkError'
+  }
+}
+
+// Usage
+function validateInput(input: string): void {
+  if (!input.trim()) {
+    throw new ValidationError('Input cannot be empty', 'input')
+  }
+}
+
+async function apiCall(): Promise<void> {
+  try {
+    await fetchData()
+  } catch (error: unknown) {
+    if (error instanceof NetworkError && error.statusCode === 429) {
+      // Rate limited, implement backoff
+      await delay(60000)
+      return apiCall()
+    }
+    throw error
+  }
 }
 ```
 
 ### Async/Await Patterns
+
+#### Sequential Operations
 ```typescript
-// Always use async/await over Promise chains
-export async function processVideo(file: string): Promise<VideoResult> {
-  const duration = await ffprobeDuration(file)
-  const output = await extractAudio(file)
-  return { duration, output }
+async function processVideoPipeline(videoPath: string): Promise<ProcessingResult> {
+  // Sequential processing - each step depends on the previous
+  const splitResult = await splitVideo(videoPath, '00:30:00')
+  const audioResult = await extractAudio(splitResult.outputPath)
+  const transcription = await transcribeAudio(audioResult.outputPath)
+  const description = await generateDescription(transcription)
+
+  return {
+    videoPath: splitResult.outputPath,
+    audioPath: audioResult.outputPath,
+    transcription,
+    description,
+  }
 }
 ```
 
-### Function Documentation
+#### Parallel Operations
+```typescript
+async function processBatch(files: string[]): Promise<ProcessingResult[]> {
+  // Parallel processing - operations are independent
+  const promises = files.map(async (file) => {
+    const [audio, transcription] = await Promise.all([
+      extractAudio(file),
+      transcribeAudio(file),
+    ])
+
+    return {
+      file,
+      audioPath: audio.outputPath,
+      transcription,
+    }
+  })
+
+  return Promise.all(promises)
+}
+```
+
+#### Error Recovery in Parallel Operations
+```typescript
+async function processBatchWithErrorRecovery(files: string[]): Promise<ProcessingResult[]> {
+  const results = await Promise.allSettled(
+    files.map(file => processSingleFile(file))
+  )
+
+  const successful: ProcessingResult[] = []
+  const failed: string[] = []
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      successful.push(result.value)
+    } else {
+      console.error(`Failed to process ${files[index]}:`, result.reason)
+      failed.push(files[index])
+    }
+  })
+
+  if (failed.length > 0) {
+    console.warn(`Failed to process ${failed.length} files:`, failed)
+  }
+
+  return successful
+}
+```
+
+### Documentation Standards
+
+#### JSDoc for Public APIs
 ```typescript
 /**
- * Extract WAV audio from video file using FFmpeg.
- * @param inputVideo - Path to input video file
- * @param outputWav - Path for output WAV file
- * @returns true if extraction successful
+ * Uploads a batch of video files to YouTube with automatic metadata verification.
+ *
+ * @param options - Configuration options for the upload process
+ * @returns Promise resolving to array of YouTube API upload responses
+ *
+ * @example
+ * ```typescript
+ * const uploader = new YouTubeBatchUploader({
+ *   credentialsPath: './credentials.json',
+ *   videosDir: './videos',
+ *   categoryId: '22',
+ *   privacyStatus: 'private'
+ * })
+ *
+ * const responses = await uploader.uploadBatch()
+ * console.log(`Uploaded ${responses.length} videos`)
+ * ```
+ *
+ * @throws {Error} When no video files are found
+ * @throws {Error} When authentication fails
  */
-export function extractWavFromVideo(inputVideo: string, outputWav: string): boolean {
-  // implementation
+async uploadBatch(): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>[]> {
+  // Implementation
+}
+```
+
+#### Inline Comments for Complex Logic
+```typescript
+async function uploadVideoWithRetry(
+  service: YouTubeService,
+  videoPath: string,
+  title: string,
+  description: string,
+  categoryId: string,
+  privacyStatus: string,
+): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
+  // Exponential backoff: delay increases as 2^attempt * baseDelay
+  // This handles temporary network issues and API rate limits
+  for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+    try {
+      // Construct YouTube API request with required metadata
+      const response = await service.videos.insert({
+        part: ['snippet', 'status'],
+        requestBody: {
+          snippet: { title, description, categoryId },
+          status: { privacyStatus },
+        },
+        media: { body: fs.createReadStream(videoPath) },
+      })
+
+      return response
+    } catch (error) {
+      // Don't retry on final attempt
+      if (attempt === this.maxRetries) {
+        throw error
+      }
+
+      // Exponential backoff with jitter to avoid thundering herd
+      const baseDelay = this.retryDelay * Math.pow(2, attempt)
+      const jitter = Math.random() * 1000 // Up to 1 second jitter
+      const delay = baseDelay + jitter
+
+      console.log(`Upload failed, retrying in ${Math.round(delay)}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
 }
 ```
 
 ### Testing Patterns
+
+#### Unit Test Structure
 ```typescript
 import { expect, mock, test } from 'bun:test'
-import { join } from 'node:path'
+import { YouTubeBatchUploader } from '../src/batchUploadToYoutube'
 
-// Conditional test execution for performance-heavy tests
-const runHeavyTest = process.env['CI'] ? test.concurrent : test.skip
-
-runHeavyTest('functionName - describes what it does', async () => {
+// Test setup
+test('uploadBatch returns array of API responses', async () => {
   // Arrange
-  const input = join('testdata', 'sample.MTS')
-  const output = join('tmp', 'output.wav')
+  const uploader = new YouTubeBatchUploader({
+    credentialsPath: './test-creds.json',
+    videosDir: './test-videos',
+  })
 
   // Act
-  const result = await someFunction(input, output)
+  const responses = await uploader.uploadBatch()
 
   // Assert
-  expect(result).toBe(true)
-  expect(existsSync(output)).toBe(true)
-
-  // Cleanup
-  rmSync(output, { force: true })
-}, { timeout: 60000 }) // Set timeouts for long operations
+  expect(Array.isArray(responses)).toBe(true)
+  expect(responses.length).toBeGreaterThan(0)
+  responses.forEach(response => {
+    expect(response.data.id).toBeDefined()
+    expect(response.status).toBe(200)
+  })
+})
 ```
 
-**Test Organization**:
-- Use `runHeavyTest` for performance-heavy tests (imports from `test/utils.ts`)
-- Place test data in `testdata/` directory
-- Use temporary directories for outputs
-- Always clean up test artifacts
-- Set appropriate timeouts for async operations
-- Mock external APIs and file operations appropriately
-
-#### Advanced Testing Patterns
+#### Mock Setup for External Dependencies
 ```typescript
-// Example: Testing async operations with proper cleanup
+// Mock Google APIs
+const mockGoogleService = {
+  videos: {
+    insert: mock(() => Promise.resolve({
+      data: { id: 'test-video-id' },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+      ok: true,
+    })),
+  },
+}
+
+mock.module('googleapis', () => ({
+  google: { youtube: () => mockGoogleService },
+}))
+```
+
+#### Test Organization and Naming
+```typescript
+// describe blocks for grouping related tests
+describe('YouTubeBatchUploader', () => {
+  describe('uploadBatch', () => {
+    test('returns array of API responses for successful uploads', async () => {
+      // Test implementation
+    })
+
+    test('handles empty video directory gracefully', async () => {
+      // Test implementation
+    })
+
+    test('retries failed uploads with exponential backoff', async () => {
+      // Test implementation
+    })
+  })
+
+  describe('authentication', () => {
+    test('loads credentials from specified path', async () => {
+      // Test implementation
+    })
+
+    test('handles invalid credentials gracefully', async () => {
+      // Test implementation
+    })
+  })
+})
+```
+
+#### Test Data Management
+```typescript
+// Temporary directories for test isolation
+import { mkdtempSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
+
 test('video processing workflow', async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), 'test-'))
-  const inputFile = join(tempDir, 'input.MTS')
-  const outputFile = join(tempDir, 'output.wav')
+  // Create isolated test directory
+  const tempDir = mkdtempSync(join(tmpdir(), 'video-test-'))
 
   try {
-    // Setup test data
-    writeFileSync(inputFile, 'fake video data')
+    // Setup test files
+    const inputPath = join(tempDir, 'input.MTS')
+    const outputPath = join(tempDir, 'output.wav')
 
-    // Act
-    const result = await processVideo(inputFile, outputFile)
+    // Copy test data
+    await Bun.write(inputPath, await Bun.file('testdata/sample.MTS').arrayBuffer())
 
-    // Assert
+    // Test operation
+    const result = await processVideo(inputPath, outputPath)
+
+    // Assertions
     expect(result).toBe(true)
-    expect(existsSync(outputFile)).toBe(true)
+    expect(existsSync(outputPath)).toBe(true)
 
-    // Verify file contents or metadata
-    const stats = statSync(outputFile)
-    expect(stats.size).toBeGreaterThan(0)
   } finally {
     // Always cleanup, even on failure
     rmSync(tempDir, { recursive: true, force: true })
   }
 }, { timeout: 30000 })
-
-// Example: Mocking external processes
-test('FFmpeg integration', async () => {
-  const spawnMock = mock(() => ({
-    exited: Promise.resolve(0),
-    stdout: readableStreamFrom('success'),
-    stderr: readableStreamFrom('')
-  }))
-
-  // Mock Bun.spawn
-  mock.module('bun', () => ({ spawn: spawnMock }))
-
-  const result = await runFFmpeg(['-i', 'input.mp4', 'output.wav'])
-  expect(result).toBe(true)
-  expect(spawnMock).toHaveBeenCalledWith(['ffmpeg', '-i', 'input.mp4', 'output.wav'])
-})
 ```
-
-#### Test Naming Conventions
-- **Unit Tests**: `describe('functionName', () => { it('should do something specific', ...) })`
-- **Integration Tests**: `describe('workflowName', () => { it('should handle end-to-end scenario', ...) })`
-- **Test Descriptions**: Clear, descriptive names explaining the expected behavior
-- **Test File Naming**: `*.test.ts` for unit tests, `*.spec.ts` for integration tests
-
-### File Structure
-```
-src/           # Main source code
-  utils.ts     # Shared utilities
-  paths.ts     # Path configurations
-  *-wav.ts     # Audio processing
-  *-mts.ts     # Video processing
-
-test/          # Test files
-  *.test.ts    # Unit tests
-  utils.ts     # Test utilities (runHeavyTest)
-
-testdata/      # Test data files
-  *.MTS        # Video test files
-  *.txt        # Text test files
-
-.github/       # GitHub Actions workflows
-  workflows/   # CI/CD pipelines
-
-node_modules/  # Dependencies (managed by Bun)
-```
-
-### Type Safety Best Practices
-- Use strict TypeScript settings
-- Avoid `any` types - use proper type annotations
-- Leverage union types for multiple possible values
-- Use interface/type aliases for complex objects
-- Enable `noImplicitAny` and related strict checks
-- Prefer readonly properties for immutable data
-
-### Performance Considerations
-- Use `Bun.spawn()` for external processes (FFmpeg, Python scripts)
-- Leverage `Bun.file()` and `Bun.write()` for optimized file I/O
-- Handle large video files with streaming
-- Set reasonable timeouts for long operations
-- Use concurrent test execution for faster CI
-
-### Security Practices
-- Validate file paths and inputs
-- Use secure temporary file creation (`mkdtempSync`)
-- Avoid shell injection in command execution
-- Sanitize user inputs for file operations
-- Store sensitive data securely (OAuth tokens, etc.)
-
-### Commit Message Style
-Follow conventional commits:
-- `feat: add new video splitting feature`
-- `fix: resolve audio extraction bug`
-- `test: add tests for concat functionality`
-- `refactor: improve error handling in utils`
-
-### Logging and Debugging
-```typescript
-// Use console.log for user-facing messages and progress updates
-console.log(`Uploading ${file} as "${title}"...`)
-
-// Use console.error for error reporting
-console.error(`Failed to process ${file}: ${error.message}`)
-
-// For debugging, use descriptive variable names and comments
-// Avoid excessive logging in production code - keep it minimal and informative
-```
-
-### Development Workflow
-1. **Before committing**: Run `bun run check` to ensure code quality
-2. **Test locally**: Run relevant tests with `bun test <file>` (heavy tests auto-skip)
-3. **Type check**: Run `bun tsc --noEmit` for type safety
-4. **Unused code**: Run `bun run knip` to check for dead code
-5. **Commit**: Use conventional commit format with detailed body
-6. **Push**: Let CI validate the changes before merging
-7. **Review**: Use PRs for all changes, even solo development
-
-### Git Hooks (Lefthook)
-- **Pre-commit**: Biome formatting, TypeScript checking, knip, fast tests
-- **Pre-push**: Full linting, full TypeScript, knip, full tests
-- **Commit-msg**: Commitlint for conventional commits
-
-### Configurable Options
-The `YouTubeBatchUploader` class accepts configurable options:
-```typescript
-interface BatchUploadOptions {
-  credentialsPath: string
-  videosDir?: string
-  descriptionsDir?: string
-  tokenPath?: string      // Custom token file location
-  categoryId?: string     // YouTube category ID
-  privacyStatus?: string  // 'public', 'private', 'unlisted'
-  maxRetries?: number     // Maximum number of upload retries (default: 3)
-  retryDelay?: number     // Base delay in ms for exponential backoff (default: 1000)
-}
-```
-
-**Retry Logic**: Uploads use exponential backoff retry on failure to handle network issues. The delay increases as 2^attempt * retryDelay ms.
-
-### External Dependencies
-- **FFmpeg**: Video/audio processing
-- **Python + faster-whisper**: AI transcription
-- **OpenCode CLI**: AI description generation
-- **Bun runtime**: JavaScript/TypeScript execution
-- **Google APIs**: YouTube integration
 
 ## Framework-Specific Guidelines
 
 ### Bun Runtime Guidelines
-- **Use Bun APIs**: Prefer `Bun.file()`, `Bun.write()`, `Bun.spawn()` for performance
-- **Module Resolution**: Leverage Bun's bundler-friendly module resolution
-- **Environment Variables**: Access via `process.env['VAR_NAME']` with bracket notation
-- **Type Definitions**: Use `@types/bun` for proper TypeScript support
 
-### YouTube Data API v3 Guidelines
-- **Authentication**: Always use OAuth2 with token persistence
-- **Scopes**: Include both upload and readonly scopes for verification
-- **Rate Limits**: Implement exponential backoff for quota handling
-- **Error Handling**: Check for specific API errors (quota exceeded, invalid credentials)
-- **Metadata Validation**: Verify all required fields before upload
+#### Optimized File I/O
+```typescript
+// Use Bun.file() for small files and config
+const config = await Bun.file('config.json').json()
+const text = await Bun.file('description.txt').text()
 
-### FFmpeg Integration Guidelines
-- **Command Construction**: Build commands as arrays to avoid shell injection
-- **Output Handling**: Capture both stdout and stderr for debugging
-- **Timeout Management**: Set reasonable timeouts for long-running operations
-- **File Validation**: Check file existence and format before processing
+// Use Node.js streams for large files
+import { createReadStream } from 'node:fs'
+const stream = createReadStream(largeVideoFile)
 
-### Python Integration Guidelines
-- **Virtual Environment**: Always use venv for Python dependencies
-- **Process Communication**: Use stdin/stdout for data exchange with Python scripts
-- **Error Propagation**: Capture and forward Python script errors to TypeScript
-- **Dependency Management**: Pin versions in requirements.txt
+// Use Bun.write() for output
+await Bun.write('output.json', JSON.stringify(data, null, 2))
+```
 
-## Common Patterns, Best Practices, and Anti-Patterns
+#### Process Execution
+```typescript
+// Use Bun.spawn() for external commands
+const ffmpeg = Bun.spawn([
+  'ffmpeg',
+  '-i', inputFile,
+  '-ss', startTime,
+  '-t', duration,
+  '-c', 'copy',
+  outputFile,
+], {
+  stdout: 'pipe',
+  stderr: 'pipe',
+})
+
+// Handle output
+const [success, errorOutput] = await Promise.all([
+  ffmpeg.exited,
+  new Response(ffmpeg.stderr).text(),
+])
+
+if (success !== 0) {
+  throw new Error(`FFmpeg failed: ${errorOutput}`)
+}
+```
+
+#### Environment Variables
+```typescript
+// Use bracket notation for dynamic env vars (Biome allows this)
+const apiKey = process.env['API_KEY']
+const logLevel = process.env['LOG_LEVEL'] || 'info'
+
+// Type-safe environment configuration
+interface EnvConfig {
+  apiUrl: string
+  timeout: number
+  debug: boolean
+}
+
+const config: EnvConfig = {
+  apiUrl: process.env['API_URL'] || 'https://api.example.com',
+  timeout: parseInt(process.env['TIMEOUT'] || '30000'),
+  debug: process.env['DEBUG'] === 'true',
+}
+```
+
+### Google APIs Integration
+
+#### Authentication Setup
+```typescript
+import { OAuth2Client } from 'google-auth-library'
+import { google } from 'googleapis'
+
+// OAuth2 client initialization
+const oauth2Client = new OAuth2Client({
+  clientId: credentials.clientId,
+  clientSecret: credentials.clientSecret,
+  redirectUri: credentials.redirectUri,
+})
+
+// Token persistence
+const tokenPath = './youtube-token.json'
+if (existsSync(tokenPath)) {
+  const tokens = JSON.parse(await Bun.file(tokenPath).text())
+  oauth2Client.setCredentials(tokens)
+}
+
+// YouTube service with auth
+const youtube = google.youtube({
+  version: 'v3',
+  auth: oauth2Client,
+})
+```
+
+#### Video Upload with Metadata
+```typescript
+const uploadResponse = await youtube.videos.insert({
+  part: ['snippet', 'status'],
+  requestBody: {
+    snippet: {
+      title: 'My Awesome Video',
+      description: 'Generated description with AI',
+      categoryId: '22', // People & Blogs
+    },
+    status: {
+      privacyStatus: 'private', // or 'public', 'unlisted'
+    },
+  },
+  media: {
+    body: fs.createReadStream('video.mp4'),
+  },
+})
+
+// Access uploaded video data
+console.log('Uploaded video ID:', uploadResponse.data.id)
+console.log('Upload status:', uploadResponse.status)
+```
+
+#### Error Handling for API Limits
+```typescript
+try {
+  const response = await youtube.videos.list({ /* params */ })
+  return response.data.items
+} catch (error: any) {
+  if (error.code === 403) {
+    // Quota exceeded or access denied
+    console.error('API quota exceeded or insufficient permissions')
+  } else if (error.code === 429) {
+    // Rate limited
+    console.error('Rate limit exceeded, implementing backoff...')
+    await delay(60000) // Wait 1 minute
+    return retryOperation()
+  }
+  throw error
+}
+```
+
+### FFmpeg Integration
+
+#### Command Construction
+```typescript
+function buildFFmpegCommand(
+  input: string,
+  output: string,
+  options: { start?: string; duration?: string; quality?: number }
+): string[] {
+  const cmd = ['ffmpeg']
+
+  // Input file
+  cmd.push('-i', input)
+
+  // Seek to start time (if specified)
+  if (options.start) {
+    cmd.push('-ss', options.start)
+  }
+
+  // Duration limit
+  if (options.duration) {
+    cmd.push('-t', options.duration)
+  }
+
+  // Video quality
+  if (options.quality) {
+    cmd.push('-q:v', options.quality.toString())
+  }
+
+  // Copy codecs (no re-encoding for speed)
+  cmd.push('-c', 'copy')
+
+  // Output file
+  cmd.push(output)
+
+  return cmd
+}
+```
+
+#### Safe Execution with Error Handling
+```typescript
+async function runFFmpeg(command: string[]): Promise<void> {
+  const process = Bun.spawn(command, {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+
+  // Capture output for debugging
+  const [stdout, stderr] = await Promise.all([
+    new Response(process.stdout).text(),
+    new Response(process.stderr).text(),
+  ])
+
+  const exitCode = await process.exited
+
+  if (exitCode !== 0) {
+    console.error('FFmpeg command failed:')
+    console.error('Command:', command.join(' '))
+    console.error('Exit code:', exitCode)
+    console.error('Stderr:', stderr)
+
+    throw new Error(`FFmpeg failed with exit code ${exitCode}`)
+  }
+
+  console.log('FFmpeg completed successfully')
+}
+```
+
+### Python Integration
+
+#### Subprocess Communication
+```typescript
+async function runWhisperTranscription(audioPath: string): Promise<string> {
+  const pythonCmd = [
+    'python3',
+    'scripts/transcribe.py',
+    audioPath,
+    '--model', 'medium',
+    '--language', 'en',
+  ]
+
+  const process = Bun.spawn(pythonCmd, {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+
+  const [stdout, stderr] = await Promise.all([
+    new Response(process.stdout).text(),
+    new Response(process.stderr).text(),
+  ])
+
+  const exitCode = await process.exited
+
+  if (exitCode !== 0) {
+    throw new Error(`Whisper transcription failed: ${stderr}`)
+  }
+
+  return stdout.trim()
+}
+```
+
+#### Virtual Environment Management
+```typescript
+// Use absolute path to virtual environment Python
+const venvPython = join(projectRoot, 'venv', 'bin', 'python3')
+
+// Ensure virtual environment exists
+if (!existsSync(venvPython)) {
+  throw new Error('Python virtual environment not found. Run: python3 -m venv venv')
+}
+
+const transcriptionCmd = [
+  venvPython,
+  'scripts/transcribe.py',
+  audioPath,
+  '--output-dir', outputDir,
+]
+```
+
+## Common Patterns & Best Practices
 
 ### Core Patterns
-- **Functional Programming Style**: Pure functions with minimal side effects, composing operations through function calls rather than class inheritance.
-- **Configuration Objects**: Complex operations parameterized via strongly-typed options objects (e.g., `BatchUploadOptions`) instead of long parameter lists.
-- **Path Manipulation**: Always use `node:path` utilities for cross-platform compatibility, avoiding string concatenation for paths.
-- **Async/Await Over Promises**: Convert error-first callbacks to async/await patterns for cleaner, more readable code.
-- **JSDoc Documentation**: All public APIs must have JSDoc comments with `@param` and `@returns` descriptions.
-- **Consistent Return Types**: Use `Promise<T>` for all async operations, maintaining type safety throughout.
-- **Conditional Test Execution**: Heavy tests run only in CI using `runHeavyTest` helper to optimize local development.
-- **Bun-Optimized I/O**: Prefer `Bun.file()`, `Bun.write()`, and `Bun.spawn()` for performance-critical file operations.
+
+#### Configuration Objects
+```typescript
+// Good: Configuration object for complex operations
+interface UploadConfig {
+  videosDir: string
+  descriptionsDir: string
+  categoryId: string
+  privacyStatus: 'public' | 'private' | 'unlisted'
+  maxRetries: number
+  retryDelay: number
+}
+
+async function uploadBatch(config: UploadConfig): Promise<UploadResult[]> {
+  // Implementation uses config object
+}
+
+// Bad: Long parameter lists
+async function uploadBatch(
+  videosDir: string,
+  descriptionsDir: string,
+  categoryId: string,
+  privacyStatus: string,
+  maxRetries: number,
+  retryDelay: number,
+): Promise<UploadResult[]> {
+  // Hard to maintain and error-prone
+}
+```
+
+#### Path Manipulation
+```typescript
+// Good: Use node:path utilities
+import { join, resolve, dirname, basename } from 'node:path'
+
+const videoPath = join(videosDir, 'input.MTS')
+const outputDir = dirname(videoPath)
+const filename = basename(videoPath, '.MTS')
+
+// Bad: String concatenation
+const videoPath = videosDir + '/input.MTS' // Platform-dependent
+```
+
+#### Async/Await Best Practices
+```typescript
+// Good: Sequential operations
+async function processPipeline(input: string): Promise<Result> {
+  const step1 = await validateInput(input)
+  const step2 = await processData(step1)
+  const step3 = await saveResult(step2)
+  return step3
+}
+
+// Good: Parallel operations
+async function processBatch(inputs: string[]): Promise<Result[]> {
+  return Promise.all(inputs.map(input => processSingle(input)))
+}
+
+// Good: Error recovery
+async function processWithFallback(input: string): Promise<Result> {
+  try {
+    return await primaryMethod(input)
+  } catch (error) {
+    console.warn('Primary method failed, using fallback:', error)
+    return await fallbackMethod(input)
+  }
+}
+```
 
 ### Best Practices
-- **Type Safety First**: Enable all strict TypeScript checks; avoid `any` types except for external API responses with biome ignores.
-- **Error Resilience**: Always handle errors gracefully with descriptive messages; use exponential backoff for retries.
-- **Resource Cleanup**: Explicitly clean up temporary files and streams to prevent resource leaks.
-- **Modular Design**: Keep functions focused on single responsibilities; compose larger operations from smaller, testable units.
-- **Security Awareness**: Validate all inputs, sanitize file paths, and avoid shell injection in external commands.
-- **Performance Optimization**: Use streaming for large files, set reasonable timeouts, and leverage Bun's optimized APIs.
-- **Test Isolation**: Each test should be completely independent with its own mocks and cleanup.
-- **Documentation Updates**: Update AGENTS.md and inline docs when adding new patterns or changing existing ones.
+
+#### Type Safety First
+```typescript
+// ✅ Use strict TypeScript settings
+// ✅ Avoid any types in production code
+// ✅ Leverage union types for constrained values
+// ✅ Use interface/type aliases for complex objects
+// ✅ Enable all strict compiler options
+```
+
+#### Error Resilience
+```typescript
+// ✅ Handle errors gracefully with descriptive messages
+// ✅ Implement exponential backoff for retries
+// ✅ Clean up resources in error paths
+// ✅ Log errors with context for debugging
+// ✅ Don't swallow errors silently
+```
+
+#### Performance Optimization
+```typescript
+// ✅ Use Bun.spawn() for external processes
+// ✅ Leverage Bun.file() and Bun.write() for I/O
+// ✅ Handle large files with streams
+// ✅ Set reasonable timeouts
+// ✅ Use concurrent test execution
+```
+
+#### Resource Management
+```typescript
+// ✅ Clean up temporary files immediately
+// ✅ Use try/finally for resource cleanup
+// ✅ Close streams and file handles
+// ✅ Handle process termination gracefully
+```
 
 ### Anti-Patterns to Avoid
-- **Avoid Synchronous File I/O**: Never use blocking file operations for large files; always use async/streaming alternatives.
-- **No Global State**: Avoid global variables or shared mutable state; use dependency injection and local scope.
-- **Avoid Magic Numbers**: Define constants for any hardcoded values like timeouts, retries, or buffer sizes.
-- **No Silent Failures**: Always log errors and provide meaningful feedback; don't swallow exceptions.
-- **Avoid Over-Abstraction**: Don't create unnecessary abstractions; prefer simple, direct solutions.
-- **No Hardcoded Paths**: Use path utilities and configuration objects instead of hardcoded strings.
-- **Avoid Race Conditions**: Properly handle async operations to prevent concurrent access issues.
-- **No Large Test Files**: Keep test files focused; split large test suites into multiple files.
 
-### Domain-Specific Patterns
+#### Synchronous File I/O
+```typescript
+// ❌ DON'T: Blocking I/O for large files
+const data = readFileSync('large-video.mp4') // Blocks event loop
 
-**YouTube API Integration**:
-- Always use OAuth2 with token persistence for authentication
-- Implement retry logic with exponential backoff for network resilience
-- Validate all metadata (titles, descriptions) before upload
-- Handle quota limits gracefully with appropriate delays
+// ✅ DO: Use streams or async methods
+const stream = createReadStream('large-video.mp4')
+```
 
-**Video Processing**:
-- Use FFmpeg for all video operations with proper error handling
-- Validate file formats and durations before processing
-- Clean up temporary files immediately after use
-- Support streaming for large video files to prevent memory issues
+#### Global State
+```typescript
+// ❌ DON'T: Global mutable state
+let globalConfig: Config
 
-**External Process Management**:
-- Use `Bun.spawn()` for all external commands (FFmpeg, Python scripts)
-- Capture both stdout and stderr for debugging
-- Set appropriate timeouts to prevent hanging processes
-- Validate exit codes and handle failures gracefully
+// ✅ DO: Dependency injection
+class Processor {
+  constructor(private config: Config) {}
+}
+```
 
-**File I/O Patterns**:
-- Use `Bun.file()` for reading configuration and small files
-- Use streams (`fs.createReadStream`) for large video files
-- Always validate file existence before operations
-- Use temporary directories (`mkdtempSync`) for intermediate files
+#### Magic Numbers
+```typescript
+// ❌ DON'T: Unexplained numbers
+if (attempts > 3) break
 
-### AI Assistant Integration
-- **Cursor Rules**: No specific Cursor rules configured (.cursor/rules/ or .cursorrules not found)
-- **GitHub Copilot Instructions**: No custom Copilot instructions (.github/copilot-instructions.md not found)
-- Use this comprehensive AGENTS.md as the primary guide for all coding activities in this repository
-- Follow the established patterns, best practices, and anti-patterns outlined above for new contributions
-- Reference the project architecture and domain-specific guidelines when implementing new features
+// ✅ DO: Named constants
+const MAX_RETRIES = 3
+if (attempts > MAX_RETRIES) break
+```
+
+#### Silent Failures
+```typescript
+// ❌ DON'T: Swallow errors
+try {
+  await riskyOperation()
+} catch {
+  // Silent failure - hard to debug
+}
+
+// ✅ DO: Handle and log errors
+try {
+  await riskyOperation()
+} catch (error: unknown) {
+  console.error('Operation failed:', error)
+  throw error // Re-throw or handle appropriately
+}
+```
+
+## Development Workflow
+
+### Daily Development Cycle
+
+1. **Start Development**
+   ```bash
+   # Pull latest changes
+   git pull origin main
+   
+   # Install dependencies (if needed)
+   bun install
+   
+   # Run tests to ensure clean slate
+   bun test
+   ```
+
+2. **Feature Development**
+   ```bash
+   # Create feature branch
+   git checkout -b feature/youtube-upload-improvements
+   
+   # Make changes with iterative testing
+   bun run lint  # Quick feedback
+   bun test test/specific-test.test.ts  # Test specific changes
+   ```
+
+3. **Pre-Commit Quality Checks**
+   ```bash
+   # Full quality check (same as git hooks)
+   bun run check
+   bun tsc --noEmit
+   bun run knip
+   
+   # Run relevant tests
+   bun test --concurrent test/related-tests.test.ts
+   ```
+
+4. **Commit with Conventional Format**
+   ```bash
+   git add .
+   git commit -m "feat: add YouTube upload progress tracking
+   
+   - Add progress callback to uploadBatch method
+   - Track individual video upload status
+   - Provide real-time feedback during long uploads
+   - Update tests to verify progress reporting"
+   ```
+
+5. **Push and Create PR**
+   ```bash
+   git push -u origin feature/youtube-upload-improvements
+   gh pr create --title "feat: YouTube upload progress tracking" --body "..." --base main
+   ```
+
+### Git Hooks and Quality Gates
+
+The project uses Lefthook for automated quality checks:
+
+**Pre-commit:**
+- Fast test suite (core functionality)
+- Biome linting and formatting
+- TypeScript compilation
+- Dead code detection
+
+**Pre-push:**
+- Full test suite
+- Complete linting and formatting
+- TypeScript type checking
+- Dependency analysis
+
+**Commit-msg:**
+- Conventional commit format validation
+
+### Code Review Checklist
+
+**For Authors:**
+- [ ] All tests pass
+- [ ] No linting errors
+- [ ] TypeScript compilation succeeds
+- [ ] Documentation updated
+- [ ] Breaking changes documented
+
+**For Reviewers:**
+- [ ] Code follows established patterns
+- [ ] Error handling is comprehensive
+- [ ] Performance considerations addressed
+- [ ] Tests provide adequate coverage
+- [ ] Documentation is clear and complete
+
+### Release Process
+
+1. **Version Bump**: Update version in package.json
+2. **Changelog**: Document changes since last release
+3. **Tag Creation**: Create git tag with version
+4. **GitHub Release**: Create release with changelog
+5. **Deployment**: Update deployment if applicable
+
+## AI Assistant Integration
+
+### Cursor Rules
+No specific Cursor rules configured (.cursor/rules/ or .cursorrules not found).
+
+### GitHub Copilot Instructions
+No custom Copilot instructions (.github/copilot-instructions.md not found).
+
+### Agent Guidelines
+
+**Primary Reference**: Use this AGENTS.md as the authoritative guide for all coding activities in this repository.
+
+**Key Principles**:
+- Follow the established patterns, best practices, and anti-patterns outlined above
+- Maintain type safety and avoid `any` types in production code
+- Use conventional commits for all changes
+- Include comprehensive tests for new functionality
+- Update documentation when changing APIs or adding features
+
+**Code Generation Standards**:
+- Use functional programming style with pure functions
+- Implement comprehensive error handling with descriptive messages
+- Follow the established naming conventions and import patterns
+- Include JSDoc documentation for public APIs
+- Write tests using the established patterns in test files
+
+**Quality Assurance**:
+- Run `bun run check` before committing
+- Ensure all tests pass with `bun test`
+- Verify TypeScript compilation with `bun tsc --noEmit`
+- Check for unused code with `bun run knip`
+
+This comprehensive guide ensures consistent, high-quality contributions to the YouTube Video Automation Project. All AI assistants should internalize these guidelines and apply them consistently across all coding activities.</content>
+<parameter name="filePath">/home/michi/dev/youtube-video/AGENTS.md

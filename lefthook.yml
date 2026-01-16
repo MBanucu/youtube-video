@@ -18,7 +18,7 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
-    fast-tests:
+    tests:
       run: bun test --concurrent
     full-lint:
       run: bun run check

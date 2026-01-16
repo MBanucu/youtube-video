@@ -16,11 +16,9 @@ export interface ExpectedVideoMetadata {
 
 export class YouTubeUploadVerifier {
   private auth: OAuth2Client
-  private useMockApi: boolean
 
-  constructor(auth: OAuth2Client, useMockApi: boolean = false) {
+  constructor(auth: OAuth2Client) {
     this.auth = auth
-    this.useMockApi = useMockApi
   }
 
   private async fetchVideoData(
@@ -78,37 +76,9 @@ export class YouTubeUploadVerifier {
     maxAttempts: number = 5,
     delayMs: number = 3000,
   ): Promise<void> {
-    const youtubeOptions: any = {
+    const youtubeOptions: Parameters<typeof google.youtube>[0] = {
       version: 'v3',
       auth: this.auth,
-    }
-
-    if (this.useMockApi) {
-      // Intercept YouTube API calls and reroute to localhost:4000
-      const originalFetch = globalThis.fetch
-      youtubeOptions.fetch = async (
-        url: RequestInfo | URL,
-        init?: RequestInit,
-      ) => {
-        let finalUrl = url
-        if (
-          typeof url === 'string' &&
-          url.includes('www.googleapis.com/youtube')
-        ) {
-          finalUrl = url.replace(
-            'https://www.googleapis.com',
-            'http://localhost:4000',
-          )
-        } else if (
-          url instanceof URL &&
-          url.hostname === 'www.googleapis.com'
-        ) {
-          finalUrl = new URL(url)
-          finalUrl.protocol = 'http'
-          finalUrl.host = 'localhost:4000'
-        }
-        return originalFetch(finalUrl, init)
-      }
     }
 
     const service = google.youtube(youtubeOptions)

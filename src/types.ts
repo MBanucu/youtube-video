@@ -12,7 +12,6 @@ export interface BatchUploadOptions {
   maxRetries?: number
   retryDelay?: number
   verifyUploads?: boolean
-  useMockApi?: boolean // Enable API call rerouting to localhost:4000 for testing
 }
 
 export interface ClientCredentials {

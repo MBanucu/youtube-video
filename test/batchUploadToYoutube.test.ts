@@ -223,7 +223,6 @@ test(
   'uploads batch with local mock YouTube API server',
   async () => {
     const port = 4000
-    const mockUrl = `http://localhost:${port}/`
 
     // Start mock server
     await startMockServer(port)
@@ -258,7 +257,7 @@ test(
         OAuth2Client: mockOAuth2Client,
       }))
 
-      // Don't mock googleapis - let it use the real service with mockServerUrl
+      // Don't mock googleapis - let it use the real service with HTTP interception
 
       // Create dummy credentials file
       const credentialsPath = join(tempDir, 'credentials.json')
@@ -283,7 +282,7 @@ test(
         descriptionsDir: fakeDescriptionsDir,
         categoryId: '22',
         privacyStatus: 'private',
-        mockServerUrl: mockUrl, // enables local mock server
+        useMockApi: true, // enables API call rerouting to localhost:4000
         maxRetries: 1,
         retryDelay: 10,
       })

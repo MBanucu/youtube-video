@@ -146,7 +146,7 @@ interface BatchUploadOptions {
   privacyStatus?: YouTubePrivacyStatus  // 'public' | 'private' | 'unlisted'
   maxRetries?: number         // Default: 3
   retryDelay?: number         // Base delay in ms, default: 1000
-  mockServerUrl?: string      // For local mock server testing
+  useMockApi?: boolean        // Enable API call rerouting to localhost:4000 for testing
 }
 
 interface ClientCredentials {
@@ -763,7 +763,7 @@ test('uploads batch with local mock YouTube API server', async () => {
       credentialsPath: 'dummy',
       videosDir: fakeVideosDir,
       descriptionsDir: fakeDescriptionsDir,
-      mockServerUrl: `http://localhost:${port}`, // Enables mock server
+      useMockApi: true, // Enables API call rerouting to localhost:4000
     })
 
     const responses = await uploader.uploadBatch()
@@ -1091,10 +1091,10 @@ try {
 // For integration testing, use the local mock server
 const uploader = new YouTubeBatchUploader({
   // ... other options
-  mockServerUrl: 'http://localhost:4000',  // Enables mock server
+  useMockApi: true, // Enables API call rerouting to localhost:4000
 })
 
-// The uploader will automatically use the mock server
+// The uploader will automatically reroute API calls to localhost:4000
 // instead of the real YouTube API
 const responses = await uploader.uploadBatch()
 ```

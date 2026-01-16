@@ -1,14 +1,17 @@
 import { expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, rmSync, statSync, unlinkSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, statSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
+import tmp from 'tmp'
 import { extractWavFromVideo } from '@/extract-wav'
 
-test.concurrent('extractWavFromVideo - extracts wav from MTS', () => {
+test('extractWavFromVideo - extracts wav from MTS', () => {
   const inputVideo = join('testdata', '01 - before24.MTS')
   // Create a unique temp directory
-  const tmpDir = mkdtempSync(join(tmpdir(), 'youtube-video-test-'))
-  const outputWav = join(tmpDir, 'out.wav')
+  const tmpDir = tmp.dirSync({
+    prefix: 'youtube-video-test-',
+    unsafeCleanup: true,
+  })
+  const outputWav = join(tmpDir.name, 'out.wav')
 
   // Clean up output if present
   if (existsSync(outputWav)) unlinkSync(outputWav)
@@ -21,5 +24,4 @@ test.concurrent('extractWavFromVideo - extracts wav from MTS', () => {
 
   // Clean up after test
   unlinkSync(outputWav)
-  rmSync(tmpDir, { recursive: true, force: true })
 })

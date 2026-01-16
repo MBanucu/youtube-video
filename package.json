@@ -8,8 +8,10 @@
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
     "@types/bun": "latest",
+    "@types/tmp": "^0.2.6",
     "@types/yargs": "latest",
     "knip": "latest",
+    "tmp": "^0.2.5",
     "typescript": "^5"
   },
   "dependencies": {

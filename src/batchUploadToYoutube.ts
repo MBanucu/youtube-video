@@ -164,24 +164,6 @@ export class YouTubeBatchUploader {
       auth: await this.authenticator.getAuth(),
     })
 
-    // Override URLs for testing
-    const rootUrl =
-      process.env['YOUTUBE_ROOT_URL'] || 'https://youtube.googleapis.com/'
-    // Type assertion for internal googleapis service configuration
-    const serviceWithOptions = service as youtube_v3.Youtube & {
-      context?: { _options?: { rootUrl?: string; baseURL?: string } }
-      _options?: { rootUrl?: string; baseURL?: string }
-    }
-
-    if (serviceWithOptions.context?._options) {
-      serviceWithOptions.context._options.rootUrl = rootUrl
-      serviceWithOptions.context._options.baseURL = `${rootUrl}youtube/v3/`
-    }
-    if (serviceWithOptions._options) {
-      serviceWithOptions._options.rootUrl = rootUrl
-      serviceWithOptions._options.baseURL = `${rootUrl}youtube/v3/`
-    }
-
     logger.debug('Calling service.videos.insert')
     const response = await this.uploadVideoWithRetry(
       service,

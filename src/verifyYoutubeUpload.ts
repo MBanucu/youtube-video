@@ -16,9 +16,11 @@ export interface ExpectedVideoMetadata {
 
 export class YouTubeUploadVerifier {
   private auth: OAuth2Client
+  private mockServerUrl?: string
 
-  constructor(auth: OAuth2Client) {
+  constructor(auth: OAuth2Client, mockServerUrl?: string) {
     this.auth = auth
+    this.mockServerUrl = mockServerUrl
   }
 
   private async fetchVideoData(
@@ -76,10 +78,16 @@ export class YouTubeUploadVerifier {
     maxAttempts: number = 5,
     delayMs: number = 3000,
   ): Promise<void> {
-    const service = google.youtube({
+    const youtubeOptions: any = {
       version: 'v3',
       auth: this.auth,
-    })
+    }
+
+    if (this.mockServerUrl) {
+      youtubeOptions.baseUrl = this.mockServerUrl
+    }
+
+    const service = google.youtube(youtubeOptions)
 
     // First, try to fetch the video data (retry on network/API errors)
     const { snippet, status } = await this.fetchVideoData(

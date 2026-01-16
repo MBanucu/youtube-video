@@ -12,6 +12,9 @@ export interface BatchUploadOptions {
   maxRetries?: number
   retryDelay?: number
   verifyUploads?: boolean
+
+  // NEW: for local mock server in tests
+  mockServerUrl?: string
 }
 
 export interface ClientCredentials {

@@ -88,8 +88,8 @@ export class YouTubeBatchUploader {
   }
 
   async getAuth(): Promise<OAuth2Client> {
-    // When using mock server, return dummy OAuth2Client
-    if (this.options.mockServerUrl) {
+    // When using mock API, return dummy OAuth2Client
+    if (this.options.useMockApi) {
       return {
         credentials: {
           access_token: 'mock-token',
@@ -229,8 +229,29 @@ export class YouTubeBatchUploader {
       auth: await this.getAuth(),
     }
 
-    if (this.options.mockServerUrl) {
-      youtubeOptions.baseUrl = this.options.mockServerUrl
+    if (this.options.useMockApi) {
+      // Intercept YouTube API calls and reroute to localhost:4000
+      const originalFetch = globalThis.fetch
+      youtubeOptions.fetch = async (url: any, init?: RequestInit) => {
+        let finalUrl = url
+        if (
+          typeof url === 'string' &&
+          url.includes('www.googleapis.com/youtube')
+        ) {
+          finalUrl = url.replace(
+            'https://www.googleapis.com',
+            'http://localhost:4000',
+          )
+        } else if (
+          url instanceof URL &&
+          url.hostname === 'www.googleapis.com'
+        ) {
+          finalUrl = new URL(url)
+          finalUrl.protocol = 'http'
+          finalUrl.host = 'localhost:4000'
+        }
+        return originalFetch(finalUrl, init)
+      }
     }
 
     const service = google.youtube(youtubeOptions)
@@ -252,7 +273,7 @@ export class YouTubeBatchUploader {
     if ((verify ?? this.options.verifyUploads ?? true) && uploadedVideoId) {
       const verifier = new YouTubeUploadVerifier(
         await this.getAuth(),
-        this.options.mockServerUrl,
+        this.options.useMockApi || false,
       )
       await verifier.verifyVideo(uploadedVideoId, {
         title,

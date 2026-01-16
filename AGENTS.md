@@ -146,7 +146,6 @@ interface BatchUploadOptions {
   privacyStatus?: YouTubePrivacyStatus  // 'public' | 'private' | 'unlisted'
   maxRetries?: number         // Default: 3
   retryDelay?: number         // Base delay in ms, default: 1000
-  useMockApi?: boolean        // Enable API call rerouting to localhost:4000 for testing
 }
 
 interface ClientCredentials {
@@ -174,7 +173,6 @@ interface ClientCredentials {
 |------|---------|------------|
 | `batchUploadToYoutube.test.ts` | YouTube upload functionality | Auth, batch processing, retries, API responses |
 | `verifyYoutubeUpload.test.ts` | Upload verification system | Video existence checking, metadata validation |
-| `fakeGoogleServer.ts` | Legacy YouTube API mocking | HTTP response simulation, error scenarios |
 | `mockYoutubeServer.ts` | Local HTTP mock server | Comprehensive integration testing with real HTTP |
 | `utils.ts` | Test utilities | `runHeavyTest` for conditional execution |
 | `*-mts.test.ts` | Video processing tests | FFmpeg integration, file operations |
@@ -1088,13 +1086,13 @@ try {
 
 #### Mock Server Usage
 ```typescript
-// For integration testing, use the local mock server
+// For integration testing, use the local mock server with fetch interception
+// (intercept fetch in test setup to reroute YouTube API calls to localhost:4000)
 const uploader = new YouTubeBatchUploader({
   // ... other options
-  useMockApi: true, // Enables API call rerouting to localhost:4000
 })
 
-// The uploader will automatically reroute API calls to localhost:4000
+// The uploader will use the intercepted fetch to call localhost:4000
 // instead of the real YouTube API
 const responses = await uploader.uploadBatch()
 ```

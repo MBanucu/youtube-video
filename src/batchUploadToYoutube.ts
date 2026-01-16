@@ -88,16 +88,6 @@ export class YouTubeBatchUploader {
   }
 
   async getAuth(): Promise<OAuth2Client> {
-    // When using mock API, return dummy OAuth2Client
-    if (this.options.useMockApi) {
-      return {
-        credentials: {
-          access_token: 'mock-token',
-          expiry_date: Date.now() + 86400000,
-        },
-      } as OAuth2Client
-    }
-
     const auth = this.auth
     if (!auth) {
       return await this.initializeAuth()
@@ -183,6 +173,7 @@ export class YouTubeBatchUploader {
   ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
+        console.log(`Attempt ${attempt + 1}: calling service.videos.insert`)
         const response = await service.videos.insert({
           part: ['snippet', 'status'],
           requestBody: {
@@ -199,6 +190,14 @@ export class YouTubeBatchUploader {
             body: fs.createReadStream(videoPath),
           },
         })
+
+        // Check if the response indicates an error
+        if (response.status >= 400) {
+          throw new Error(
+            `YouTube API error: ${response.status} ${response.statusText}`,
+          )
+        }
+
         return response
       } catch (error) {
         if (attempt < this.maxRetries) {
@@ -224,38 +223,30 @@ export class YouTubeBatchUploader {
     privacyStatus: YouTubePrivacyStatus,
     verify?: boolean,
   ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
-    const youtubeOptions: any = {
+    const service = google.youtube({
       version: 'v3',
       auth: await this.getAuth(),
+    })
+
+    // Override URLs for testing
+    const rootUrl =
+      process.env['YOUTUBE_ROOT_URL'] || 'https://youtube.googleapis.com/'
+    // Type assertion for internal googleapis service configuration
+    const serviceWithOptions = service as youtube_v3.Youtube & {
+      context?: { _options?: { rootUrl?: string; baseURL?: string } }
+      _options?: { rootUrl?: string; baseURL?: string }
     }
 
-    if (this.options.useMockApi) {
-      // Intercept YouTube API calls and reroute to localhost:4000
-      const originalFetch = globalThis.fetch
-      youtubeOptions.fetch = async (url: any, init?: RequestInit) => {
-        let finalUrl = url
-        if (
-          typeof url === 'string' &&
-          url.includes('www.googleapis.com/youtube')
-        ) {
-          finalUrl = url.replace(
-            'https://www.googleapis.com',
-            'http://localhost:4000',
-          )
-        } else if (
-          url instanceof URL &&
-          url.hostname === 'www.googleapis.com'
-        ) {
-          finalUrl = new URL(url)
-          finalUrl.protocol = 'http'
-          finalUrl.host = 'localhost:4000'
-        }
-        return originalFetch(finalUrl, init)
-      }
+    if (serviceWithOptions.context?._options) {
+      serviceWithOptions.context._options.rootUrl = rootUrl
+      serviceWithOptions.context._options.baseURL = `${rootUrl}youtube/v3/`
+    }
+    if (serviceWithOptions._options) {
+      serviceWithOptions._options.rootUrl = rootUrl
+      serviceWithOptions._options.baseURL = `${rootUrl}youtube/v3/`
     }
 
-    const service = google.youtube(youtubeOptions)
-
+    console.log('Calling service.videos.insert')
     const response = await this.uploadVideoWithRetry(
       service,
       videoPath,
@@ -271,10 +262,7 @@ export class YouTubeBatchUploader {
     )
 
     if ((verify ?? this.options.verifyUploads ?? true) && uploadedVideoId) {
-      const verifier = new YouTubeUploadVerifier(
-        await this.getAuth(),
-        this.options.useMockApi || false,
-      )
+      const verifier = new YouTubeUploadVerifier(await this.getAuth())
       await verifier.verifyVideo(uploadedVideoId, {
         title,
         description,

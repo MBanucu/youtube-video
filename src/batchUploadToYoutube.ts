@@ -88,6 +88,16 @@ export class YouTubeBatchUploader {
   }
 
   async getAuth(): Promise<OAuth2Client> {
+    // When using mock server, return dummy OAuth2Client
+    if (this.options.mockServerUrl) {
+      return {
+        credentials: {
+          access_token: 'mock-token',
+          expiry_date: Date.now() + 86400000,
+        },
+      } as OAuth2Client
+    }
+
     const auth = this.auth
     if (!auth) {
       return await this.initializeAuth()
@@ -214,10 +224,16 @@ export class YouTubeBatchUploader {
     privacyStatus: YouTubePrivacyStatus,
     verify?: boolean,
   ): Promise<GaxiosResponseWithHTTP2<youtube_v3.Schema$Video>> {
-    const service = google.youtube({
+    const youtubeOptions: any = {
       version: 'v3',
       auth: await this.getAuth(),
-    })
+    }
+
+    if (this.options.mockServerUrl) {
+      youtubeOptions.baseUrl = this.options.mockServerUrl
+    }
+
+    const service = google.youtube(youtubeOptions)
 
     const response = await this.uploadVideoWithRetry(
       service,
@@ -234,7 +250,10 @@ export class YouTubeBatchUploader {
     )
 
     if ((verify ?? this.options.verifyUploads ?? true) && uploadedVideoId) {
-      const verifier = new YouTubeUploadVerifier(await this.getAuth())
+      const verifier = new YouTubeUploadVerifier(
+        await this.getAuth(),
+        this.options.mockServerUrl,
+      )
       await verifier.verifyVideo(uploadedVideoId, {
         title,
         description,

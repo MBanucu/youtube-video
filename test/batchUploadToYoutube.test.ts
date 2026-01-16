@@ -4,6 +4,7 @@ import { expect, mock, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { sharedFakeGoogleServer } from './fakeGoogleServer'
 
@@ -213,4 +214,99 @@ test(
     }
   },
   { timeout: 10000 },
+)
+
+// NEW: Test with local mock YouTube API server
+import { startMockServer, stopMockServer } from './mockYoutubeServer'
+
+test(
+  'uploads batch with local mock YouTube API server',
+  async () => {
+    const port = 4000
+    const mockUrl = `http://localhost:${port}/`
+
+    // Start mock server
+    await startMockServer(port)
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'youtube-test-'))
+
+    try {
+      const fakeVideosDir = join(tempDir, 'videos')
+      const fakeDescriptionsDir = join(tempDir, 'descriptions')
+      mkdirSync(fakeVideosDir)
+      mkdirSync(fakeDescriptionsDir)
+
+      // Create fake video file
+      const videoPath = join(fakeVideosDir, 'part1.MTS')
+      writeFileSync(videoPath, 'fake video content')
+
+      // Create description file
+      const descPath = join(fakeDescriptionsDir, 'part1-description_en.txt')
+      writeFileSync(descPath, 'Test description from mock server')
+
+      // Mock OAuth2Client for testing
+      const mockOAuth2Client = mock(
+        (): Partial<OAuth2Client> => ({
+          credentials: {
+            access_token: 'dummy-access-token',
+            expiry_date: Date.now() + 86400000,
+          },
+        }),
+      )
+
+      mock.module('google-auth-library', () => ({
+        OAuth2Client: mockOAuth2Client,
+      }))
+
+      // Don't mock googleapis - let it use the real service with mockServerUrl
+
+      // Create dummy credentials file
+      const credentialsPath = join(tempDir, 'credentials.json')
+      writeFileSync(
+        credentialsPath,
+        JSON.stringify({
+          installed: {
+            client_id: 'dummy-client-id',
+            client_secret: 'dummy-client-secret',
+            redirect_uris: ['http://localhost'],
+          },
+        }),
+      )
+
+      const { YouTubeBatchUploader } = await import(
+        '../src/batchUploadToYoutube'
+      )
+
+      const uploader = new YouTubeBatchUploader({
+        credentialsPath,
+        videosDir: fakeVideosDir,
+        descriptionsDir: fakeDescriptionsDir,
+        categoryId: '22',
+        privacyStatus: 'private',
+        mockServerUrl: mockUrl, // enables local mock server
+        maxRetries: 1,
+        retryDelay: 10,
+      })
+
+      const responses = await uploader.uploadBatch()
+
+      expect(responses.length).toBeGreaterThan(0)
+      for (const resp of responses) {
+        expect(resp.status).toBe(200)
+        expect(resp.data.id).toBeDefined()
+        expect(resp.data.snippet?.title).toBe('Video Part 1')
+        expect(resp.data.snippet?.description).toBe(
+          'Test description from mock server',
+        )
+        expect(resp.data.snippet?.categoryId).toBe('22')
+        expect(resp.data.status?.privacyStatus).toBe('private')
+      }
+    } finally {
+      stopMockServer()
+      // Clean up temp directory
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  },
+  { timeout: 30000 },
 )

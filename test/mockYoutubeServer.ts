@@ -257,7 +257,7 @@ export async function startMockServer(port: number = 4000) {
           }
 
           // Consume media part (ignored)
-          const videoId = `multipart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          const videoId = `multipart-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
           const video: youtube_v3.Schema$Video = {
             kind: 'youtube#video',
             id: videoId,

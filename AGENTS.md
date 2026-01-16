@@ -23,6 +23,7 @@ This is a TypeScript project using Bun runtime for automating YouTube video proc
 - AI-powered description generation using OpenCode CLI
 - Batch processing workflows with progress tracking
 - YouTube upload with OAuth2 authentication and metadata verification
+- Local mock YouTube API server for comprehensive integration testing
 
 **Key Features:**
 - **Zero-config setup**: Works out-of-the-box with sensible defaults
@@ -115,6 +116,21 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
 - Metadata validation (title, description, category, privacy)
 - Progress tracking and error reporting
 - Rate limit handling and quota management
+- Optional local mock server support for testing
+
+#### 5. Mock YouTube Server Layer (`test/mockYoutubeServer.ts`)
+**Purpose**: Local HTTP mock server for comprehensive integration testing.
+
+**Key Functions:**
+- `startMockServer(port)`: Start mock server on specified port
+- `stopMockServer()`: Stop the running mock server
+
+**Features:**
+- Simulates YouTube Data API v3 `videos.insert` and `videos.list` endpoints
+- Supports both resumable and multipart upload flows
+- In-memory storage of uploaded video metadata
+- HTTP streaming support for realistic testing
+- Configurable server port (default: 4000)
 
 #### 5. Configuration & Types Layer (`types.ts`, `paths.ts`)
 **Purpose**: Strongly typed configuration and path management.
@@ -126,10 +142,11 @@ interface BatchUploadOptions {
   videosDir?: string
   descriptionsDir?: string
   tokenPath?: string
-  categoryId?: string     // YouTube category ID
-  privacyStatus?: 'public' | 'private' | 'unlisted'
-  maxRetries?: number     // Default: 3
-  retryDelay?: number     // Base delay in ms, default: 1000
+  categoryId?: string         // YouTube category ID
+  privacyStatus?: YouTubePrivacyStatus  // 'public' | 'private' | 'unlisted'
+  maxRetries?: number         // Default: 3
+  retryDelay?: number         // Base delay in ms, default: 1000
+  mockServerUrl?: string      // For local mock server testing
 }
 
 interface ClientCredentials {
@@ -157,7 +174,8 @@ interface ClientCredentials {
 |------|---------|------------|
 | `batchUploadToYoutube.test.ts` | YouTube upload functionality | Auth, batch processing, retries, API responses |
 | `verifyYoutubeUpload.test.ts` | Upload verification system | Video existence checking, metadata validation |
-| `fakeGoogleServer.ts` | YouTube API mocking | HTTP response simulation, error scenarios |
+| `fakeGoogleServer.ts` | Legacy YouTube API mocking | HTTP response simulation, error scenarios |
+| `mockYoutubeServer.ts` | Local HTTP mock server | Comprehensive integration testing with real HTTP |
 | `utils.ts` | Test utilities | `runHeavyTest` for conditional execution |
 | `*-mts.test.ts` | Video processing tests | FFmpeg integration, file operations |
 | `extract-wav.test.ts` | Audio extraction tests | WAV conversion, file validation |
@@ -174,7 +192,7 @@ interface ClientCredentials {
 | `biome.json` | Linting and formatting | Single quotes, 2-space indent, custom rules |
 | `tsconfig.json` | TypeScript compilation | Strict mode, Bun compatibility, path aliases |
 | `lefthook.yml` | Git hooks | Pre-commit: fast tests + linting, Pre-push: full suite |
-| `package.json` | Dependencies and scripts | Bun runtime, Google APIs, FFmpeg integration |
+| `package.json` | Dependencies and scripts | Bun runtime, Google APIs, FFmpeg integration, Biome, TypeScript |
 
 ### CI/CD Infrastructure (`.github/workflows/`)
 
@@ -229,6 +247,30 @@ bun test test/extract-wav.test.ts test/concat-mts.test.ts
 # Run with coverage (if configured)
 bun test --coverage
 ```
+
+#### Run Single Tests or Test Cases
+```bash
+# Run only tests whose name contains "mock"
+bun test --test-name-pattern="mock"
+
+# Run only tests whose name contains "upload"
+bun test --test-name-pattern="upload"
+
+# Run tests starting with "should"
+bun test --test-name-pattern="^should"
+
+# Run specific test in a file
+bun test test/batchUploadToYoutube.test.ts --test-name-pattern="uploads batch"
+
+# Alternative short form
+bun test -t "mock server"
+```
+
+**Test Name Pattern Examples:**
+- `-t "integration"` - matches any test with "integration" in the name
+- `-t "^should"` - matches tests starting with "should"
+- `-t "(upload|verify)"` - matches tests containing "upload" OR "verify"
+- `-t "2 \+ 2"` - matches tests with special characters (escape them)
 
 #### Run Tests by Pattern
 ```bash
@@ -688,7 +730,7 @@ test('uploadBatch returns array of API responses', async () => {
 
 #### Mock Setup for External Dependencies
 ```typescript
-// Mock Google APIs
+// Mock Google APIs (legacy approach)
 const mockGoogleService = {
   videos: {
     insert: mock(() => Promise.resolve({
@@ -705,6 +747,31 @@ const mockGoogleService = {
 mock.module('googleapis', () => ({
   google: { youtube: () => mockGoogleService },
 }))
+```
+
+#### Integration Testing with Mock Server
+```typescript
+// Modern approach: Use local mock YouTube server
+import { startMockServer, stopMockServer } from './mockYoutubeServer'
+
+test('uploads batch with local mock YouTube API server', async () => {
+  const port = 4000
+  await startMockServer(port)
+
+  try {
+    const uploader = new YouTubeBatchUploader({
+      credentialsPath: 'dummy',
+      videosDir: fakeVideosDir,
+      descriptionsDir: fakeDescriptionsDir,
+      mockServerUrl: `http://localhost:${port}`, // Enables mock server
+    })
+
+    const responses = await uploader.uploadBatch()
+    expect(responses.length).toBeGreaterThan(0)
+  } finally {
+    stopMockServer()
+  }
+}, { timeout: 30000 })
 ```
 
 #### Test Organization and Naming
@@ -972,6 +1039,66 @@ async function runFFmpeg(command: string[]): Promise<void> {
 }
 ```
 
+### YouTube API Integration
+
+#### Privacy Status Handling
+```typescript
+// Use the strict YouTubePrivacyStatus type instead of strings
+type YouTubePrivacyStatus = 'public' | 'private' | 'unlisted'
+
+interface VideoMetadata {
+  privacyStatus: YouTubePrivacyStatus  // ✅ Type-safe
+  // privacyStatus: string              // ❌ Avoid - not type-safe
+}
+
+// Correct usage
+const metadata: VideoMetadata = {
+  privacyStatus: 'private'  // ✅ TypeScript validates this
+}
+
+// Avoid casting unless necessary for API compatibility
+// const status = someValue as YouTubePrivacyStatus  // ❌ Only if absolutely needed
+```
+
+#### Video Upload Patterns
+```typescript
+// Always use proper error handling for uploads
+try {
+  const response = await youtube.videos.insert({
+    part: ['snippet', 'status'],
+    requestBody: {
+      snippet: { title, description, categoryId },
+      status: { privacyStatus },
+    },
+    media: { body: fs.createReadStream(videoPath) },
+  })
+} catch (error: any) {
+  // Handle specific YouTube API errors
+  if (error.code === 403) {
+    throw new Error('YouTube API quota exceeded or insufficient permissions')
+  }
+  if (error.code === 429) {
+    // Implement exponential backoff
+    await delay(Math.pow(2, attempt) * 1000)
+    return retryUpload()
+  }
+  throw error
+}
+```
+
+#### Mock Server Usage
+```typescript
+// For integration testing, use the local mock server
+const uploader = new YouTubeBatchUploader({
+  // ... other options
+  mockServerUrl: 'http://localhost:4000',  // Enables mock server
+})
+
+// The uploader will automatically use the mock server
+// instead of the real YouTube API
+const responses = await uploader.uploadBatch()
+```
+
 ### Python Integration
 
 #### Subprocess Communication
@@ -1097,6 +1224,30 @@ async function processWithFallback(input: string): Promise<Result> {
 
 ### Best Practices
 
+#### Security First
+```typescript
+// ✅ Store credentials securely, never in code
+const credentialsPath = process.env['GOOGLE_CREDENTIALS_PATH']
+if (!credentialsPath) {
+  throw new Error('GOOGLE_CREDENTIALS_PATH environment variable required')
+}
+
+// ✅ Validate file paths to prevent directory traversal
+const safePath = resolve(allowedDir, userInput)
+if (!safePath.startsWith(allowedDir)) {
+  throw new Error('Invalid file path')
+}
+
+// ✅ Use proper error handling to avoid information leakage
+try {
+  await uploadVideo(videoPath)
+} catch (error: unknown) {
+  // Don't log sensitive details
+  console.error('Upload failed:', error instanceof Error ? error.message : 'Unknown error')
+  throw new Error('Video upload failed')
+}
+```
+
 #### Type Safety First
 ```typescript
 // ✅ Use strict TypeScript settings
@@ -1202,10 +1353,14 @@ try {
    ```bash
    # Create feature branch
    git checkout -b feature/youtube-upload-improvements
-   
+
    # Make changes with iterative testing
    bun run lint  # Quick feedback
-   bun test test/specific-test.test.ts  # Test specific changes
+   bun test -t "specific test"  # Run single test case
+   bun test test/specific-test.test.ts  # Test specific file
+
+   # For YouTube API changes, use mock server for fast testing
+   bun test -t "mock server"  # Test with local mock server
    ```
 
 3. **Pre-Commit Quality Checks**
@@ -1282,14 +1437,21 @@ The project uses Lefthook for automated quality checks:
 ## AI Assistant Integration
 
 ### Cursor Rules
-No specific Cursor rules configured (.cursor/rules/ or .cursorrules not found).
+No specific Cursor rules configured. The project uses standard Biome linting and TypeScript strict mode.
 
 ### GitHub Copilot Instructions
-No custom Copilot instructions (.github/copilot-instructions.md not found).
+No custom Copilot instructions configured. Follow the patterns and conventions outlined in this document.
 
 ### Agent Guidelines
 
 **Primary Reference**: Use this AGENTS.md as the authoritative guide for all coding activities in this repository.
+
+**Recent Updates**: This document has been updated to include:
+- Local mock YouTube API server for comprehensive integration testing
+- Enhanced YouTube API type safety with proper Google API types
+- Detailed single test execution instructions
+- Security best practices for API key and credential handling
+- Updated testing patterns including mock server usage
 
 **Key Principles**:
 - Follow the established patterns, best practices, and anti-patterns outlined above
@@ -1304,6 +1466,8 @@ No custom Copilot instructions (.github/copilot-instructions.md not found).
 - Follow the established naming conventions and import patterns
 - Include JSDoc documentation for public APIs
 - Write tests using the established patterns in test files
+- Use the local mock YouTube server for integration testing
+- Prefer Google API types over generic strings for type safety
 
 **Quality Assurance**:
 - Run `bun run check` before committing

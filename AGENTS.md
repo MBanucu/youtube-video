@@ -1410,6 +1410,23 @@ The project uses Lefthook for automated quality checks:
 **Commit-msg:**
 - Conventional commit format validation
 
+### Git Safety Protocol
+
+When working with git commits, follow these critical safety rules:
+
+**NEVER** run destructive/irreversible git commands (like push --force, hard reset, etc) unless the user explicitly requests them.
+
+**NEVER** skip hooks (--no-verify, --no-gpg-sign, etc) unless the user explicitly requests it.
+
+**Avoid** `git commit --amend`. ONLY use `--amend` when ALL conditions are met:
+(1) User explicitly requested amend, OR commit SUCCEEDED but pre-commit hook auto-modified files that need including
+(2) HEAD commit was created by you in this conversation (verify: `git log -1 --format='%an %ae'`)
+(3) Commit has NOT been pushed to remote (verify: `git status` shows "Your branch is ahead")
+
+**CRITICAL:** If commit FAILED or was REJECTED by hook, NEVER amend - fix the issue and create a NEW commit. Since a failed commit means no commit was made, amending would incorrectly modify the previous (unrelated) commit.
+
+**CRITICAL:** If you already pushed to remote, NEVER amend unless user explicitly requests it (requires force push).
+
 ### Code Review Checklist
 
 **For Authors:**

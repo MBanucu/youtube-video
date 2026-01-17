@@ -3,5 +3,5 @@
   "entry": ["src/**/*.ts", "test/**/*.ts"],
   "project": ["src/**/*.ts", "test/**/*.ts"],
   "ignoreBinaries": [],
-  "ignoreDependencies": ["@commitlint/cli"]
+  "ignoreDependencies": ["@commitlint/cli", "pino-pretty"]
 }

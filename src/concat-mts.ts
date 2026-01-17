@@ -87,25 +87,16 @@ export async function concatMts(
     sum += dur
     loggers.videoConcat.info(
       { file: f, duration: dur },
-      'Duration for %s: %.3fs',
-      f,
-      dur,
+      `Duration for ${f}: ${dur.toFixed(3)}s`,
     )
   }
   const outDur = await ffprobeDuration(outputFile)
   const diff = sum - outDur
-  loggers.videoConcat.info(
-    { sum, outDur, diff },
-    'Sum of input durations: %.3fs, Output duration: %.3fs, Difference: %.5fs',
-    sum,
-    outDur,
-    diff,
-  )
+  loggers.videoConcat.info({ sum, outDur, diff }, 'Duration comparison')
   if (diff > 0.01) {
     loggers.videoConcat.warn(
       { diff },
-      'WARNING: Measurable duration difference detected! Difference: %.5fs',
-      diff,
+      'Measurable duration difference detected',
     )
   } else {
     loggers.videoConcat.info('Durations match.')

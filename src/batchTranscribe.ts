@@ -46,16 +46,15 @@ export async function batchTranscribe(
       const ok = extractWavFromVideo(mts, wav)
       if (!ok) continue
     } else {
-      logger.info({ wav }, '%s already exists; skipping conversion.', wav)
+      logger.info({ wav }, 'WAV file already exists, skipping conversion')
     }
 
     // Transcribe
-    logger.info({ wav, srt }, 'Transcribing %s → %s', wav, srt)
+    logger.info({ wav, srt }, 'Starting transcription')
     const exitCode = await runTranscribe(wav, srt, model, language)
     if (exitCode !== 0) {
-      logger.error({ wav }, 'Transcription failed for %s!', wav)
+      logger.error({ wav }, 'Transcription failed')
     }
-    logger.info('---')
   }
 }
 

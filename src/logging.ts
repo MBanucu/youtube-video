@@ -2,13 +2,6 @@
 
 import pino from 'pino'
 
-// Detect system timezone automatically, with fallback for test environment
-const _getSystemTimezone = () => {
-  const detectedZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  // In test environment, Bun reports 'UTC' but system is actually Europe/Berlin
-  return detectedZone === 'UTC' ? 'Europe/Berlin' : detectedZone
-}
-
 // Map LOG_LEVEL environment variable to Pino levels (supports both strings and legacy numbers)
 const getLogLevel = () => {
   const level = process.env['LOG_LEVEL']?.toLowerCase()

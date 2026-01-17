@@ -29,13 +29,9 @@ export function runTranscribe(
     proc.stderr.on('data', (data) => process.stderr.write(data))
     proc.on('close', (code) => {
       if (code === 0) {
-        logger.info(
-          { outputPath },
-          'Transcription finished, output in %s',
-          outputPath,
-        )
+        logger.info({ outputPath }, 'Transcription finished')
       } else {
-        logger.error({ code }, 'Transcription failed with exit code %d', code)
+        logger.error({ code }, 'Transcription failed')
       }
       resolve(code ?? 1)
     })

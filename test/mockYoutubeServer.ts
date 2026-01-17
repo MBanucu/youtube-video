@@ -33,7 +33,12 @@ export async function startMockServer(port: number = 4000) {
     async fetch(req) {
       const url = new URL(req.url)
       const pathname = url.pathname
-      const state = serverStates.get(port)!
+      const state = serverStates.get(port)
+
+      if (!state) {
+        logger.error({ port }, 'Server state not found for port')
+        return new Response('Internal server error', { status: 500 })
+      }
 
       // Log for debugging tests
       logger.debug({ method: req.method, url: req.url }, 'Received request')

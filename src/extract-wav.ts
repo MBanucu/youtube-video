@@ -16,12 +16,7 @@ export function extractWavFromVideo(
   outputWav: string,
   options: { loglevel?: string } = {},
 ): boolean {
-  logger.info(
-    { inputVideo, outputWav },
-    'Converting %s → %s',
-    inputVideo,
-    outputWav,
-  )
+  logger.info({ inputVideo, outputWav }, 'Converting video to WAV')
   const loglevel = options.loglevel || 'error'
   const conv = spawnSync(
     'ffmpeg',
@@ -40,7 +35,7 @@ export function extractWavFromVideo(
     { stdio: 'inherit' },
   )
   if (conv.status !== 0) {
-    logger.error({ inputVideo }, 'ffmpeg failed for %s!', inputVideo)
+    logger.error({ inputVideo }, 'ffmpeg conversion failed')
     return false
   }
   return true

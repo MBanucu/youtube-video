@@ -1,5 +1,6 @@
-import { mkdir, mkdir } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
+import { paths } from '@/paths'
 import { ffprobeDuration } from '@/utils'
 import { loggers } from './logging'
 
@@ -45,7 +46,12 @@ export async function splitVideoPrecise(
       'copy',
       outFile,
     ]
-    loggers.videoSplit.info({ part: i, command: ffmpegCmd.join(' ') }, 'Splitting part%d: ffmpeg %s', i, ffmpegCmd.join(' '))
+    loggers.videoSplit.info(
+      { part: i, command: ffmpegCmd.join(' ') },
+      'Splitting part%d: ffmpeg %s',
+      i,
+      ffmpegCmd.join(' '),
+    )
     const proc = Bun.spawn(ffmpegCmd, {
       stdio: ['inherit', 'inherit', 'inherit'],
     })
@@ -54,7 +60,10 @@ export async function splitVideoPrecise(
       throw new Error(`ffmpeg failed for part${i} with code ${code}`)
     }
     const actualDuration = await ffprobeDuration(outFile)
-    loggers.videoSplit.info({ part: i, duration: actualDuration }, 'part%d.MTS: %.3fs', i, actualDuration)
+    loggers.videoSplit.info(
+      { part: i, duration: actualDuration },
+      'Part duration',
+    )
     start += actualDuration
     remaining -= actualDuration
   }
@@ -95,7 +104,7 @@ if (import.meta.main) {
       loglevel: argv.loglevel,
     })
   })().catch((err: unknown) => {
-    logger.error({ error: err }, 'Error: %s', err)
+    loggers.videoSplit.error({ error: err }, 'Error occurred')
     process.exit(1)
   })
 }

@@ -74,19 +74,7 @@ async function generateDescription(
         .replace(/Antwort:?c?\s*/i, '')
         .trim()
     } else {
-      logger.error(
-        {
-          attempt,
-          maxRetries,
-          exitCode,
-          stderr,
-        },
-        'opencode failed (attempt %d/%d) with code %d. stderr: %s',
-        attempt,
-        maxRetries,
-        exitCode,
-        stderr,
-      )
+      logger.error({ attempt, maxRetries, exitCode, stderr }, 'opencode failed')
       if (attempt < maxRetries)
         await new Promise((res) => setTimeout(res, 1000)) // Always wait 1 second between retries
     }
@@ -103,9 +91,7 @@ async function describeAndWrite(
   await Bun.write(outputPath, desc)
   logger.info(
     { label, outputPath: path.resolve(outputPath) },
-    '%s description written to %s',
-    label,
-    path.resolve(outputPath),
+    'Description written',
   )
   return desc
 }
@@ -158,7 +144,7 @@ ${transcription}`
       await Promise.all([enPromise, dePromise])
     }
   } catch (err) {
-    logger.error({ error: err }, 'Error: %s', err)
+    logger.error({ error: err }, 'Generation failed')
     process.exit(1)
   }
 }

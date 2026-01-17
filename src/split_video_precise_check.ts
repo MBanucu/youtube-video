@@ -18,7 +18,7 @@ export async function splitVideoPreciseCheck(
   const threshold = options.threshold || 0.01
 
   const originalDur = await ffprobeDuration(srcFile)
-  logger.info({ originalDur }, 'Original: %.3fs', originalDur)
+  logger.info({ originalDur }, 'Original duration')
 
   // Find all partN.MTS files
   const splitFiles = (await readdir(videosDir))
@@ -29,25 +29,21 @@ export async function splitVideoPreciseCheck(
     const fp = join(videosDir, file)
     const dur = await ffprobeDuration(fp)
     sum += dur
-    logger.info({ file, duration: dur }, 'Duration for %s: %.3fs', file, dur)
+    logger.info({ file, duration: dur }, 'Part duration')
   }
-  logger.info({ sum }, 'Sum of part durations: %.3fs', sum)
+  logger.info({ sum }, 'Sum of part durations')
   const diff = sum - originalDur
-  logger.info({ diff }, 'Difference (sum - original): %.5fs', diff)
+  logger.info({ diff }, 'Difference (sum - original)')
   const passed = Math.abs(diff) < threshold
   if (passed) {
     logger.info(
       { diff, threshold },
-      'Test PASSED: Split videos durations match the original. (diff: %.5fs, threshold: %.5fs)',
-      diff,
-      threshold,
+      'Test PASSED: Split videos durations match the original',
     )
   } else {
     logger.warn(
       { diff, threshold },
-      'Test WARNING: There is a non-trivial difference. (diff: %.5fs, threshold: %.5fs)',
-      diff,
-      threshold,
+      'Test WARNING: There is a non-trivial difference',
     )
   }
   return passed
@@ -80,7 +76,7 @@ if (import.meta.main) {
     })
     process.exit(passed ? 0 : 1)
   })().catch((err: unknown) => {
-    logger.error({ error: err }, 'Error: %s', err)
+    logger.error({ error: err }, 'Error occurred')
     process.exit(1)
   })
 }

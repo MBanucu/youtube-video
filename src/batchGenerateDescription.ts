@@ -38,10 +38,7 @@ export async function batchGenerateDescriptions(
       if (existsSync(finalOutFile)) {
         logger.info(
           { srtPath, language, finalOutFile },
-          'Skipping %s (%s): %s already exists.',
-          srtPath,
-          language,
-          finalOutFile,
+          'Skipping: already exists',
         )
         continue
       }
@@ -50,25 +47,12 @@ export async function batchGenerateDescriptions(
         await new Promise((res) => setTimeout(res, delayMs))
         logger.info(
           { language: language.toUpperCase(), srtPath, delayMs },
-          'Starting %s for %s after %.1fs...',
-          language.toUpperCase(),
-          srtPath,
-          delayMs / 1000,
+          'Starting description generation',
         )
         try {
           await generateDescriptionsFromPaths(srtPath, outputFile, language)
         } catch (err) {
-          logger.error(
-            {
-              srtPath,
-              language,
-              error: err,
-            },
-            'FAILED for %s (%s): %s',
-            srtPath,
-            language,
-            err,
-          )
+          logger.error({ srtPath, language, error: err }, 'Generation failed')
         }
       })(delay, srtPath)
       jobs.push(job())

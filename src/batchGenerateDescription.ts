@@ -2,6 +2,9 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { generateDescriptionsFromPaths } from '@/generate-description'
 import { paths } from '@/paths'
+import { logger } from './logging'
+
+// Logger is imported from logging.ts
 
 /**
  * Batch generates descriptions for all txt files in the trans directory.
@@ -33,21 +36,39 @@ export async function batchGenerateDescriptions(
       const langFileSuffix = language === 'en' ? '_en.txt' : '_de.txt'
       const finalOutFile = outputFile.slice(0, -4) + langFileSuffix
       if (existsSync(finalOutFile)) {
-        console.log(
-          `Skipping ${srtPath} (${language}): ${finalOutFile} already exists.`,
+        logger.info(
+          { srtPath, language, finalOutFile },
+          'Skipping %s (%s): %s already exists.',
+          srtPath,
+          language,
+          finalOutFile,
         )
         continue
       }
       // Launch each job with delay
       const job = ((delayMs, srtPath) => async () => {
         await new Promise((res) => setTimeout(res, delayMs))
-        console.log(
-          `Starting ${language.toUpperCase()} for ${srtPath} after ${delayMs / 1000}s ...`,
+        logger.info(
+          { language: language.toUpperCase(), srtPath, delayMs },
+          'Starting %s for %s after %.1fs...',
+          language.toUpperCase(),
+          srtPath,
+          delayMs / 1000,
         )
         try {
           await generateDescriptionsFromPaths(srtPath, outputFile, language)
         } catch (err) {
-          console.error(`FAILED for ${srtPath} (${language}):`, err)
+          logger.error(
+            {
+              srtPath,
+              language,
+              error: err,
+            },
+            'FAILED for %s (%s): %s',
+            srtPath,
+            language,
+            err,
+          )
         }
       })(delay, srtPath)
       jobs.push(job())
@@ -56,7 +77,7 @@ export async function batchGenerateDescriptions(
   }
 
   await Promise.all(jobs)
-  console.log('All jobs complete.')
+  logger.info('All jobs complete.')
 }
 
 if (import.meta.main) {

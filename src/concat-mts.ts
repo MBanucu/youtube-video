@@ -2,6 +2,9 @@ import { mkdir, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { paths } from '@/paths'
 import { ffprobeDuration } from '@/utils'
+import { loggers } from './logging'
+
+// Logger is imported from logging.ts
 
 /**
  * Concatenates multiple MTS video files into a single output file using ffmpeg.
@@ -32,7 +35,11 @@ export async function concatMts(
   // Prepare mylist.txt content
   const listContent = `${files.map((f) => `file '${resolve(join(sourceDir, f))}'`).join('\n')}\n`
   await writeFile(myListPath, listContent)
-  console.log(`${fileListName} written:\n`, listContent)
+  loggers.videoConcat.info(
+    { fileListName },
+    'File list written: %s',
+    fileListName,
+  )
 
   // Ensure output destination exists
   await mkdir(destDir, { recursive: true })
@@ -52,7 +59,11 @@ export async function concatMts(
     'copy',
     outputFile,
   ]
-  console.log('Running:', ffmpegCmd.join(' '))
+  loggers.videoConcat.info(
+    { command: ffmpegCmd.join(' ') },
+    'Running: %s',
+    ffmpegCmd.join(' '),
+  )
   const proc = Bun.spawn(ffmpegCmd, {
     stdio: ['inherit', 'inherit', 'inherit'],
   })
@@ -60,27 +71,44 @@ export async function concatMts(
   if (code !== 0) {
     throw new Error(`ffmpeg failed with code ${code}`)
   } else {
-    console.log('Concatenation successful:', outputFile)
+    loggers.videoConcat.info(
+      { outputFile },
+      'Concatenation successful: %s',
+      outputFile,
+    )
   }
 
   // ---- Duration check ----
-  console.log('\nChecking durations:')
+  loggers.videoConcat.info('Checking durations...')
   let sum = 0
   for (const f of files) {
     const fpath = join(sourceDir, f)
     const dur = await ffprobeDuration(fpath)
     sum += dur
-    console.log(`${f}: ${dur.toFixed(3)}s`)
+    loggers.videoConcat.info(
+      { file: f, duration: dur },
+      'Duration for %s: %.3fs',
+      f,
+      dur,
+    )
   }
   const outDur = await ffprobeDuration(outputFile)
-  console.log(`\nSum of input durations: ${sum.toFixed(3)}s`)
-  console.log(`Output file duration:    ${outDur.toFixed(3)}s`)
-  const diff = Math.abs(sum - outDur)
-  console.log(`Difference:              ${diff.toFixed(5)}s`)
+  const diff = sum - outDur
+  loggers.videoConcat.info(
+    { sum, outDur, diff },
+    'Sum of input durations: %.3fs, Output duration: %.3fs, Difference: %.5fs',
+    sum,
+    outDur,
+    diff,
+  )
   if (diff > 0.01) {
-    console.warn('WARNING: Measurable duration difference detected!')
+    loggers.videoConcat.warn(
+      { diff },
+      'WARNING: Measurable duration difference detected! Difference: %.5fs',
+      diff,
+    )
   } else {
-    console.log('Durations match.')
+    loggers.videoConcat.info('Durations match.')
   }
 }
 
@@ -122,7 +150,7 @@ if (import.meta.main) {
       loglevel: argv.loglevel,
     })
   })().catch((err: unknown) => {
-    console.error('Error:', err)
+    loggers.videoConcat.error({ error: err }, 'Error: %s', err)
     process.exit(1)
   })
 }

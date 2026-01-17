@@ -2,6 +2,9 @@ import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { paths } from '@/paths'
 import { ffprobeDuration } from '@/utils'
+import { logger } from './logging'
+
+// Logger is imported from logging.ts
 
 /**
  * Checks if the sum of split video part durations matches the original video duration.
@@ -15,7 +18,7 @@ export async function splitVideoPreciseCheck(
   const threshold = options.threshold || 0.01
 
   const originalDur = await ffprobeDuration(srcFile)
-  console.log(`Original: ${originalDur.toFixed(3)}s`)
+  logger.info({ originalDur }, 'Original: %.3fs', originalDur)
 
   // Find all partN.MTS files
   const splitFiles = (await readdir(videosDir))
@@ -26,16 +29,26 @@ export async function splitVideoPreciseCheck(
     const fp = join(videosDir, file)
     const dur = await ffprobeDuration(fp)
     sum += dur
-    console.log(`${file}: ${dur.toFixed(3)}s`)
+    logger.info({ file, duration: dur }, 'Duration for %s: %.3fs', file, dur)
   }
-  console.log(`\nSum of part durations: ${sum.toFixed(3)}s`)
+  logger.info({ sum }, 'Sum of part durations: %.3fs', sum)
   const diff = sum - originalDur
-  console.log(`Difference (sum - original): ${diff.toFixed(5)}s`)
+  logger.info({ diff }, 'Difference (sum - original): %.5fs', diff)
   const passed = Math.abs(diff) < threshold
   if (passed) {
-    console.log('Test PASSED: Split videos durations match the original.')
+    logger.info(
+      { diff, threshold },
+      'Test PASSED: Split videos durations match the original. (diff: %.5fs, threshold: %.5fs)',
+      diff,
+      threshold,
+    )
   } else {
-    console.warn('Test WARNING: There is a non-trivial difference.')
+    logger.warn(
+      { diff, threshold },
+      'Test WARNING: There is a non-trivial difference. (diff: %.5fs, threshold: %.5fs)',
+      diff,
+      threshold,
+    )
   }
   return passed
 }
@@ -67,7 +80,7 @@ if (import.meta.main) {
     })
     process.exit(passed ? 0 : 1)
   })().catch((err: unknown) => {
-    console.error('Error:', err)
+    logger.error({ error: err }, 'Error: %s', err)
     process.exit(1)
   })
 }

@@ -48,14 +48,14 @@ export const sharedOAuth2ClientMock = mock(() => ({
 
 // Mock GoogleAuth class that can be extended
 class MockGoogleAuth extends OAuth2Client {
-  constructor(options?: any) {
+  // biome-ignore lint/complexity/noUselessConstructor: Constructor needed for mock extendability
+  constructor(options?: ConstructorParameters<typeof OAuth2Client>[0]) {
     super(options)
   }
 }
 
 // Mock DefaultTransporter
 class MockDefaultTransporter {
-  constructor() {}
   request() {}
 }
 

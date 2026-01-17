@@ -46,9 +46,24 @@ export const sharedOAuth2ClientMock = mock(() => ({
   ),
 }))
 
+// Mock GoogleAuth class that can be extended
+class MockGoogleAuth extends OAuth2Client {
+  constructor(options?: any) {
+    super(options)
+  }
+}
+
+// Mock DefaultTransporter
+class MockDefaultTransporter {
+  constructor() {}
+  request() {}
+}
+
 // Setup function to mock the google-auth-library module
 export function setupGoogleAuthMock() {
   mock.module('google-auth-library', () => ({
     OAuth2Client: sharedOAuth2ClientMock,
+    GoogleAuth: MockGoogleAuth,
+    DefaultTransporter: MockDefaultTransporter,
   }))
 }

@@ -1,5 +1,8 @@
 import { spawn } from 'node:child_process'
 import { join } from 'node:path'
+import { logger } from './logging'
+
+// Logger is imported from logging.ts
 
 /**
  * Runs the Python transcribe script for the given audio file, writes output.
@@ -26,9 +29,13 @@ export function runTranscribe(
     proc.stderr.on('data', (data) => process.stderr.write(data))
     proc.on('close', (code) => {
       if (code === 0) {
-        console.log(`\nTranscription finished, output in ${outputPath}`)
+        logger.info(
+          { outputPath },
+          'Transcription finished, output in %s',
+          outputPath,
+        )
       } else {
-        console.error(`Transcription failed with exit code ${code}`)
+        logger.error({ code }, 'Transcription failed with exit code %d', code)
       }
       resolve(code ?? 1)
     })

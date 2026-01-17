@@ -1,6 +1,8 @@
 // test/mockYoutubeServer.ts
 import type { youtube_v3 } from 'googleapis'
-import { logger } from '../src/logger'
+import { logger } from '../src/logging'
+
+// Use main logger from logging.ts
 
 let server: ReturnType<typeof Bun.serve> | null = null
 
@@ -99,9 +101,10 @@ export async function startMockServer(port: number = 4000) {
       // videos.list - GET /youtube/v3/videos?part=...&id=...
       if (pathname === '/youtube/v3/videos' && req.method === 'GET') {
         const id = url.searchParams.get('id')
-        logger.debug('List request id:', id, 'uploadedVideos keys:', [
-          ...state.uploadedVideos.keys(),
-        ])
+        logger.debug('List request id: {id}, uploadedVideos keys: {keys}', {
+          id,
+          keys: [...state.uploadedVideos.keys()],
+        })
         const items: youtube_v3.Schema$Video[] = []
         if (id) {
           const ids = id.split(',')
@@ -133,10 +136,11 @@ export async function startMockServer(port: number = 4000) {
         const uploadType = url.searchParams.get('uploadType')
         const contentType = req.headers.get('content-type') || ''
         logger.debug(
-          'videos.insert, uploadType:',
-          uploadType,
-          'contentType:',
-          contentType,
+          'videos.insert, uploadType: {uploadType}, contentType: {contentType}',
+          {
+            uploadType,
+            contentType,
+          },
         )
 
         if (uploadType === 'resumable') {
@@ -144,7 +148,7 @@ export async function startMockServer(port: number = 4000) {
           let metadata: Record<string, unknown> = {}
           try {
             metadata = (await req.json()) as Record<string, unknown>
-            logger.debug('Resumable metadata:', metadata)
+            logger.debug('Resumable metadata: {metadata}', { metadata })
           } catch {
             // fallback empty
           }
@@ -233,25 +237,29 @@ export async function startMockServer(port: number = 4000) {
         if (boundaryMatch?.[1]) {
           const boundary = `--${boundaryMatch[1].replace(/"/g, '')}`
           const bodyText = await req.text()
-          logger.debug('Manual parsing, bodyText length:', bodyText.length)
+          logger.debug('Manual parsing, bodyText length: {length}', {
+            length: bodyText.length,
+          })
           const parts = bodyText
             .split(boundary)
             .filter((p) => p.trim() && !p.includes('--'))
-          logger.debug('Parts:', parts.length)
+          logger.debug('Parts: {count}', { count: parts.length })
           let metadata: Record<string, unknown> = {}
           for (const part of parts) {
-            logger.debug('Part header:', part.slice(0, 200))
+            logger.debug('Part header: {header}', {
+              header: part.slice(0, 200),
+            })
             if (part.includes('application/json')) {
               const jsonStart = part.indexOf('\r\n\r\n') + 4
               const jsonStr = part
                 .slice(jsonStart, part.lastIndexOf('\r\n--'))
                 .trim()
-              logger.debug('JSON str:', jsonStr)
+              logger.debug('JSON str: {jsonStr}', { jsonStr })
               try {
                 metadata = JSON.parse(jsonStr)
-                logger.debug('Parsed metadata:', metadata)
+                logger.debug('Parsed metadata: {metadata}', { metadata })
               } catch (e) {
-                logger.debug('Parse error:', e)
+                logger.debug('Parse error: {error}', { error: e })
               }
             }
           }
@@ -272,7 +280,10 @@ export async function startMockServer(port: number = 4000) {
               privacyStatus: 'private',
             },
           }
-          logger.debug('Created video:', video.id, video.snippet?.title)
+          logger.debug('Created video: {id}, title: {title}', {
+            id: video.id,
+            title: video.snippet?.title,
+          })
           state.uploadedVideos.set(videoId, video)
 
           return new Response(JSON.stringify(video), {
@@ -294,7 +305,7 @@ export async function startMockServer(port: number = 4000) {
           return new Response('Session not found', { status: 404 })
         }
 
-        logger.debug('PUT to resumable, returning video:', video)
+        logger.debug('PUT to resumable, returning video: {video}', { video })
 
         // Consume the media stream
         if (req.body) {
@@ -316,7 +327,11 @@ export async function startMockServer(port: number = 4000) {
     },
   })
 
-  logger.info(`Mock YouTube API server running at ${server.url}`)
+  logger.info(
+    { url: server.url },
+    'Mock YouTube API server running at %s',
+    server.url,
+  )
   return server
 }
 

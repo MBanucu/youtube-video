@@ -1,5 +1,9 @@
 import { spawnSync } from 'node:child_process'
 
+import { logger } from './logging'
+
+// Logger is imported from logging.ts
+
 /**
  * Extracts WAV audio from a video file using ffmpeg.
  * @param inputVideo Path to the input video file
@@ -12,7 +16,12 @@ export function extractWavFromVideo(
   outputWav: string,
   options: { loglevel?: string } = {},
 ): boolean {
-  console.log(`Converting ${inputVideo} → ${outputWav}`)
+  logger.info(
+    { inputVideo, outputWav },
+    'Converting %s → %s',
+    inputVideo,
+    outputWav,
+  )
   const loglevel = options.loglevel || 'error'
   const conv = spawnSync(
     'ffmpeg',
@@ -31,7 +40,7 @@ export function extractWavFromVideo(
     { stdio: 'inherit' },
   )
   if (conv.status !== 0) {
-    console.error(`ffmpeg failed for ${inputVideo}!`)
+    logger.error({ inputVideo }, 'ffmpeg failed for %s!', inputVideo)
     return false
   }
   return true

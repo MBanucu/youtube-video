@@ -3,6 +3,9 @@ import { join } from 'node:path'
 import { extractWavFromVideo } from '@/extract-wav'
 import { paths } from '@/paths'
 import { runTranscribe } from '@/runTranscribe'
+import { logger } from './logging'
+
+// Logger is imported from logging.ts
 
 /**
  * Batch transcribes all MTS videos in the videos directory to SRT subtitles.
@@ -43,16 +46,16 @@ export async function batchTranscribe(
       const ok = extractWavFromVideo(mts, wav)
       if (!ok) continue
     } else {
-      console.log(`${wav} already exists; skipping conversion.`)
+      logger.info({ wav }, '%s already exists; skipping conversion.', wav)
     }
 
     // Transcribe
-    console.log(`Transcribing ${wav} → ${srt}`)
+    logger.info({ wav, srt }, 'Transcribing %s → %s', wav, srt)
     const exitCode = await runTranscribe(wav, srt, model, language)
     if (exitCode !== 0) {
-      console.error(`Transcription failed for ${wav}!`)
+      logger.error({ wav }, 'Transcription failed for %s!', wav)
     }
-    console.log('---')
+    logger.info('---')
   }
 }
 

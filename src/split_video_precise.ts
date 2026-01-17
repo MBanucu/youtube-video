@@ -1,7 +1,7 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { paths } from '@/paths'
 import { ffprobeDuration } from '@/utils'
+import { loggers } from './logging'
 
 /**
  * Splits a video file into equal-duration parts using ffmpeg.
@@ -45,7 +45,7 @@ export async function splitVideoPrecise(
       'copy',
       outFile,
     ]
-    console.log(`Splitting part${i}: ffmpeg ${ffmpegCmd.join(' ')}`)
+    loggers.videoSplit.info({ part: i, command: ffmpegCmd.join(' ') }, 'Splitting part%d: ffmpeg %s', i, ffmpegCmd.join(' '))
     const proc = Bun.spawn(ffmpegCmd, {
       stdio: ['inherit', 'inherit', 'inherit'],
     })
@@ -54,12 +54,12 @@ export async function splitVideoPrecise(
       throw new Error(`ffmpeg failed for part${i} with code ${code}`)
     }
     const actualDuration = await ffprobeDuration(outFile)
-    console.log(`part${i}.MTS: ${actualDuration.toFixed(3)}s`)
+    loggers.videoSplit.info({ part: i, duration: actualDuration }, 'part%d.MTS: %.3fs', i, actualDuration)
     start += actualDuration
     remaining -= actualDuration
   }
 
-  console.log('Splitting complete.')
+  loggers.videoSplit.info('Splitting complete.')
 }
 
 if (import.meta.main) {
@@ -95,7 +95,7 @@ if (import.meta.main) {
       loglevel: argv.loglevel,
     })
   })().catch((err: unknown) => {
-    console.error('Error:', err)
+    logger.error({ error: err }, 'Error: %s', err)
     process.exit(1)
   })
 }

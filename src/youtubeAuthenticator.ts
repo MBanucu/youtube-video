@@ -4,8 +4,10 @@ import path from 'node:path'
 import readline from 'node:readline'
 import type { Credentials } from 'google-auth-library'
 import { OAuth2Client } from 'google-auth-library'
-import { logger } from './logger'
+import { loggers } from './logging'
 import type { ClientCredentials } from './types'
+
+// Use youtube auth child logger
 
 // OAuth2 scopes for YouTube
 const SCOPES = [
@@ -79,7 +81,11 @@ export class YouTubeAuthenticator {
       access_type: 'offline',
       scope: SCOPES,
     })
-    logger.info('Authorize this app by visiting this url:', authUrl)
+    loggers.youtubeAuth.info(
+      { authUrl },
+      'Authorize this app by visiting this url: %s',
+      authUrl,
+    )
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,

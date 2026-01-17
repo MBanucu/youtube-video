@@ -13,6 +13,8 @@ This file contains comprehensive information for AI coding agents working on thi
 7. [Common Patterns & Best Practices](#common-patterns--best-practices)
 8. [Development Workflow](#development-workflow)
 9. [AI Assistant Integration](#ai-assistant-integration)
+10. [Advanced Topics](#advanced-topics)
+11. [Troubleshooting Guide](#troubleshooting-guide)
 
 ## Project Overview
 
@@ -31,6 +33,8 @@ This is a TypeScript project using Bun runtime for automating YouTube video proc
 - **Performance optimized**: Uses Bun's fast runtime and optimized APIs
 - **CI/CD ready**: Comprehensive test suite with GitHub Actions integration
 - **Error resilient**: Exponential backoff retry logic and comprehensive error handling
+- **Structured logging**: Pino-based logging with child loggers and metadata
+- **Modular architecture**: Clean separation of concerns with dependency injection
 
 ## Project Architecture
 
@@ -61,6 +65,8 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
 - **Streaming I/O**: Large file handling without memory issues
 - **Testability**: Modular design enabling comprehensive unit testing
 - **Type Safety**: Strict TypeScript with no `any` types in production code
+- **Dependency Injection**: Services injected through constructors for testability
+- **Structured Logging**: Context-aware logging with metadata for debugging
 
 ### Key Components
 
@@ -132,7 +138,16 @@ Raw Video Files → Video Processing → Audio Processing → AI Processing → 
 - HTTP streaming support for realistic testing
 - Configurable server port (default: 4000)
 
-#### 5. Configuration & Types Layer (`types.ts`, `paths.ts`)
+#### 6. Authentication Layer (`youtubeAuthenticator.ts`)
+**Purpose**: Handle OAuth2 authentication flow with Google APIs.
+
+**Features:**
+- Automatic token refresh and persistence
+- Secure credential storage
+- Interactive authentication flow
+- Token validation and error handling
+
+#### 7. Configuration & Types Layer (`types.ts`, `paths.ts`)
 **Purpose**: Strongly typed configuration and path management.
 
 **Key Interfaces:**
@@ -146,14 +161,27 @@ interface BatchUploadOptions {
   privacyStatus?: YouTubePrivacyStatus  // 'public' | 'private' | 'unlisted'
   maxRetries?: number         // Default: 3
   retryDelay?: number         // Base delay in ms, default: 1000
+  verifyUploads?: boolean     // Default: true
 }
 
 interface ClientCredentials {
-  clientId: string
-  clientSecret: string
-  redirectUri: string
+  installed: {
+    client_id: string
+    client_secret: string
+    redirect_uris: string[]
+  }
 }
 ```
+
+#### 8. Logging Layer (`logging.ts`)
+**Purpose**: Centralized logging configuration with Pino.
+
+**Features:**
+- Environment-based log level configuration
+- Pretty printing in development
+- Child loggers for different modules
+- Structured logging with metadata
+- Performance-optimized for production
 
 ## Important Files & Directories
 
@@ -163,8 +191,10 @@ interface ClientCredentials {
 |------|---------|---------------|
 | `batchUploadToYoutube.ts` | Main YouTube uploader with OAuth2 and batch processing | `uploadBatch()`, `uploadVideoWithRetry()`, `verifyVideo()` |
 | `verifyYoutubeUpload.ts` | Post-upload verification system | `verifyVideo()`, `fetchVideoData()` |
+| `youtubeAuthenticator.ts` | OAuth2 authentication management | `getAuth()`, `refreshToken()` |
 | `types.ts` | TypeScript interfaces and type definitions | `BatchUploadOptions`, `ExpectedVideoMetadata` |
 | `paths.ts` | Path configuration and directory management | Path utilities and defaults |
+| `logging.ts` | Pino logging configuration and child loggers | `getLogger()`, pre-configured loggers |
 | `utils.ts` | Shared utility functions | File validation, error formatting |
 
 ### Test Infrastructure (`test/`)
@@ -191,12 +221,14 @@ interface ClientCredentials {
 | `tsconfig.json` | TypeScript compilation | Strict mode, Bun compatibility, path aliases |
 | `lefthook.yml` | Git hooks | Pre-commit: fast tests + linting, Pre-push: full suite |
 | `package.json` | Dependencies and scripts | Bun runtime, Google APIs, FFmpeg integration, Biome, TypeScript |
+| `discover-tests.ts` | Test file discovery for CI | Glob pattern matching for parallel test execution |
 
 ### CI/CD Infrastructure (`.github/workflows/`)
 
 - **`test.yml`**: Matrix testing strategy with FFmpeg/Python setup
 - **Conditional concurrency**: Prevents redundant CI runs
 - **Dependency caching**: Optimized build performance
+- **OpenCode CLI integration**: AI-powered testing in CI environment
 
 ### External Dependencies & Tools
 
@@ -297,6 +329,8 @@ The project uses GitHub Actions with:
 - **Matrix testing**: Each test file runs in parallel
 - **Conditional execution**: Heavy tests skip locally
 - **Artifact collection**: Test results and coverage reports
+- **OpenCode CLI caching**: Optimized AI tool setup
+- **FFmpeg and Python setup**: Cross-platform media processing
 
 ### Development Commands
 ```bash
@@ -335,7 +369,12 @@ rm -rf node_modules bun.lock && bun install && bun test
 ### Biome Configuration
 ```json
 {
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "files": {
+    "includes": ["**", "!!**/*.MTS", "!**/.direnv"]
+  },
   "linter": {
+    "enabled": true,
     "rules": {
       "recommended": true,
       "complexity": {
@@ -347,10 +386,14 @@ rm -rf node_modules bun.lock && bun install && bun test
     }
   },
   "formatter": {
+    "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "quoteStyle": "single",
     "semicolons": "asNeeded"
+  },
+  "javascript": {
+    "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" }
   }
 }
 ```
@@ -554,6 +597,47 @@ async function apiCall(): Promise<void> {
     throw error
   }
 }
+```
+
+### Logging Patterns
+
+#### Pino Logger Usage
+```typescript
+import { getLogger } from './logging'
+
+// Create child logger with context
+const logger = getLogger({
+  module: 'video-upload',
+  service: 'youtube-automation'
+})
+
+// Structured logging with metadata
+logger.info({ videoPath, fileSize }, 'Starting video upload')
+logger.error({ error, attempt }, 'Upload failed, will retry')
+logger.debug({ metadata }, 'Processing video metadata')
+```
+
+#### Log Levels
+- `fatal`: Critical errors that cause system shutdown
+- `error`: Errors that need immediate attention
+- `warn`: Warning conditions that don't stop execution
+- `info`: General information about operations
+- `debug`: Detailed debugging information
+- `trace`: Very detailed execution traces
+
+#### Logging Best Practices
+```typescript
+// ✅ Use structured logging
+logger.info({ userId, action: 'login' }, 'User authenticated')
+
+// ✅ Include relevant context
+logger.error({ videoId, attempt, error }, 'Upload failed')
+
+// ❌ Avoid string interpolation
+logger.info(`User ${userId} logged in`) // Less searchable
+
+// ❌ Don't log sensitive data
+logger.info({ password }, 'User data') // Never do this
 ```
 
 ### Async/Await Patterns
@@ -1086,7 +1170,7 @@ try {
 
 #### Mock Server Usage
 ```typescript
-// For integration testing, use the local mock server with fetch interception
+// For integration testing, use the local mock YouTube server with fetch interception
 // (intercept fetch in test setup to reroute YouTube API calls to localhost:4000)
 const uploader = new YouTubeBatchUploader({
   // ... other options
@@ -1467,6 +1551,9 @@ No custom Copilot instructions configured. Follow the patterns and conventions o
 - Detailed single test execution instructions
 - Security best practices for API key and credential handling
 - Updated testing patterns including mock server usage
+- Comprehensive logging patterns with Pino
+- Extended error handling and async/await patterns
+- Additional framework-specific guidelines for Bun, Google APIs, FFmpeg, and Python integration
 
 **Key Principles**:
 - Follow the established patterns, best practices, and anti-patterns outlined above
@@ -1483,12 +1570,263 @@ No custom Copilot instructions configured. Follow the patterns and conventions o
 - Write tests using the established patterns in test files
 - Use the local mock YouTube server for integration testing
 - Prefer Google API types over generic strings for type safety
+- Use structured logging with Pino child loggers and metadata
 
 **Quality Assurance**:
 - Run `bun run check` before committing
 - Ensure all tests pass with `bun test`
 - Verify TypeScript compilation with `bun tsc --noEmit`
 - Check for unused code with `bun run knip`
+
+## Advanced Topics
+
+### Dependency Injection Pattern
+```typescript
+// Service interface
+interface VideoProcessor {
+  process(input: string): Promise<ProcessingResult>
+}
+
+// Concrete implementation
+class FFmpegVideoProcessor implements VideoProcessor {
+  constructor(private ffmpegPath: string) {}
+  
+  async process(input: string): Promise<ProcessingResult> {
+    // Implementation
+  }
+}
+
+// Factory for testability
+class VideoProcessingService {
+  constructor(private processor: VideoProcessor) {}
+  
+  async processVideo(input: string): Promise<ProcessingResult> {
+    return this.processor.process(input)
+  }
+}
+```
+
+### Circuit Breaker Pattern for External APIs
+```typescript
+class CircuitBreaker {
+  private failures = 0
+  private lastFailureTime = 0
+  private state: 'closed' | 'open' | 'half-open' = 'closed'
+  
+  async execute<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      if (Date.now() - this.lastFailureTime > this.timeout) {
+        this.state = 'half-open'
+      } else {
+        throw new Error('Circuit breaker is open')
+      }
+    }
+    
+    try {
+      const result = await operation()
+      this.onSuccess()
+      return result
+    } catch (error) {
+      this.onFailure()
+      throw error
+    }
+  }
+  
+  private onSuccess() {
+    this.failures = 0
+    this.state = 'closed'
+  }
+  
+  private onFailure() {
+    this.failures++
+    this.lastFailureTime = Date.now()
+    if (this.failures >= this.failureThreshold) {
+      this.state = 'open'
+    }
+  }
+}
+```
+
+### Custom Hooks for React Components (if applicable)
+```typescript
+// useVideoUpload.ts
+import { useState, useCallback } from 'react'
+
+export function useVideoUpload() {
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  
+  const upload = useCallback(async (file: File) => {
+    setUploading(true)
+    setError(null)
+    
+    try {
+      // Upload logic with progress tracking
+      const result = await uploadVideo(file, (progress) => {
+        setProgress(progress)
+      })
+      return result
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+      throw err
+    } finally {
+      setUploading(false)
+      setProgress(0)
+    }
+  }, [])
+  
+  return { upload, uploading, progress, error }
+}
+```
+
+### Performance Monitoring
+```typescript
+class PerformanceMonitor {
+  private metrics = new Map<string, number[]>()
+  
+  start(operation: string): () => void {
+    const startTime = performance.now()
+    return () => {
+      const duration = performance.now() - startTime
+      this.recordMetric(operation, duration)
+    }
+  }
+  
+  private recordMetric(operation: string, duration: number) {
+    const metrics = this.metrics.get(operation) || []
+    metrics.push(duration)
+    
+    // Keep only last 100 measurements
+    if (metrics.length > 100) {
+      metrics.shift()
+    }
+    
+    this.metrics.set(operation, metrics)
+  }
+  
+  getAverage(operation: string): number {
+    const metrics = this.metrics.get(operation) || []
+    return metrics.reduce((sum, duration) => sum + duration, 0) / metrics.length
+  }
+}
+
+// Usage
+const monitor = new PerformanceMonitor()
+const endTimer = monitor.start('video-upload')
+try {
+  await uploadVideo(file)
+} finally {
+  endTimer()
+}
+
+logger.info({ avgDuration: monitor.getAverage('video-upload') }, 'Upload performance metrics')
+```
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions
+
+#### FFmpeg Not Found
+**Error**: `ffmpeg: command not found`
+**Solution**: 
+```bash
+# Install FFmpeg
+sudo apt-get install ffmpeg  # Ubuntu/Debian
+brew install ffmpeg          # macOS
+```
+
+#### Python Virtual Environment Issues
+**Error**: `python3: command not found` or module import errors
+**Solution**:
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate and install dependencies
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### YouTube API Quota Exceeded
+**Error**: `quotaExceeded` in API response
+**Solution**:
+- Check YouTube API Console for quota usage
+- Implement exponential backoff
+- Consider upgrading to higher quota plan
+- Use batch operations to reduce API calls
+
+#### Authentication Failures
+**Error**: `invalid_grant` or `access_denied`
+**Solution**:
+- Regenerate OAuth2 credentials
+- Check redirect URIs in Google Console
+- Verify token file permissions
+- Re-run authentication flow
+
+#### TypeScript Compilation Errors
+**Common Issues**:
+- Missing type definitions: Add `@types/package-name`
+- Strict null checks: Use optional chaining or null guards
+- Any types: Replace with proper type definitions
+
+#### Bun Runtime Issues
+**Hot Reload Not Working**:
+```bash
+# Clear Bun's cache
+rm -rf ~/.bun/install/cache
+bun install
+```
+
+**Module Resolution**:
+- Ensure `node_modules` is properly installed
+- Check `tsconfig.json` path mappings
+- Use `node:` prefix for Node.js built-ins
+
+#### Test Failures
+**Flaky Tests**: Use retry logic for network-dependent tests
+**Timeout Issues**: Increase timeout for heavy operations
+**Mock Server Conflicts**: Ensure proper cleanup in test teardown
+
+#### Git Hook Failures
+**Lefthook Not Running**: 
+```bash
+# Install lefthook
+bun add -d @evilmartians/lefthook
+lefthook install
+```
+
+**Pre-commit Hook Blocking**:
+- Fix linting errors: `bun run lint`
+- Fix type errors: `bun tsc --noEmit`
+- Run tests: `bun test`
+
+### Debug Logging
+Enable debug logging to troubleshoot issues:
+```bash
+LOG_LEVEL=debug bun run script.ts
+```
+
+### Performance Profiling
+Use Bun's built-in profiler:
+```bash
+bun --inspect script.ts
+```
+
+### Memory Leaks
+Monitor memory usage in long-running processes:
+```typescript
+// Add to main application
+setInterval(() => {
+  const usage = process.memoryUsage()
+  logger.debug({
+    rss: usage.rss,
+    heapTotal: usage.heapTotal,
+    heapUsed: usage.heapUsed,
+    external: usage.external,
+  }, 'Memory usage')
+}, 30000) // Log every 30 seconds
+```
 
 This comprehensive guide ensures consistent, high-quality contributions to the YouTube Video Automation Project. All AI assistants should internalize these guidelines and apply them consistently across all coding activities.</content>
 <parameter name="filePath">/home/michi/dev/youtube-video/AGENTS.md

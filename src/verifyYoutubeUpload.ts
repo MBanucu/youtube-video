@@ -3,9 +3,11 @@
 import type { OAuth2Client } from 'google-auth-library'
 import type { youtube_v3 } from 'googleapis'
 import { google } from 'googleapis'
-import { logger } from './logger'
+import { loggers } from './logging'
 import type { YouTubePrivacyStatus } from './types'
 import { YouTubeAuthenticator } from './youtubeAuthenticator'
+
+// Use verification child logger
 
 type YouTubeService = ReturnType<typeof google.youtube>
 
@@ -74,8 +76,17 @@ export class YouTubeUploadVerifier {
         if (attempt === maxAttempts) {
           throw error
         }
-        logger.warn(
-          `Failed to fetch video ${videoId}: ${error instanceof Error ? error.message : String(error)}. Retrying in ${delayMs}ms...`,
+        loggers.verification.warn(
+          {
+            videoId,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+            delayMs,
+          },
+          'Failed to fetch video %s: %s. Retrying in %dms...',
+          videoId,
+          error instanceof Error ? error.message : String(error),
+          delayMs,
         )
         await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
@@ -128,6 +139,10 @@ export class YouTubeUploadVerifier {
       )
     }
 
-    logger.info(`Verification successful for video ${videoId}`)
+    loggers.verification.info(
+      { videoId },
+      'Verification successful for video %s',
+      videoId,
+    )
   }
 }

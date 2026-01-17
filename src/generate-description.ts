@@ -1,6 +1,9 @@
 import path from 'node:path'
 import yargs from 'yargs'
 import { paths } from '@/paths'
+import { logger } from './logging'
+
+// Logger is imported from logging.ts
 
 const argv = await yargs(process.argv.slice(2))
   .usage('Usage: $0 --input <input.txt> --output <output.txt>')
@@ -71,8 +74,17 @@ async function generateDescription(
         .replace(/Antwort:?c?\s*/i, '')
         .trim()
     } else {
-      console.error(
-        `opencode failed (attempt ${attempt}/${maxRetries}) with code ${exitCode}. stderr:`,
+      logger.error(
+        {
+          attempt,
+          maxRetries,
+          exitCode,
+          stderr,
+        },
+        'opencode failed (attempt %d/%d) with code %d. stderr: %s',
+        attempt,
+        maxRetries,
+        exitCode,
         stderr,
       )
       if (attempt < maxRetries)
@@ -89,7 +101,12 @@ async function describeAndWrite(
 ) {
   const desc = await generateDescription(prompt)
   await Bun.write(outputPath, desc)
-  console.log(`${label} description written to ${path.resolve(outputPath)}`)
+  logger.info(
+    { label, outputPath: path.resolve(outputPath) },
+    '%s description written to %s',
+    label,
+    path.resolve(outputPath),
+  )
   return desc
 }
 
@@ -141,7 +158,7 @@ ${transcription}`
       await Promise.all([enPromise, dePromise])
     }
   } catch (err) {
-    console.error('Error:', err)
+    logger.error({ error: err }, 'Error: %s', err)
     process.exit(1)
   }
 }

@@ -26,9 +26,7 @@ export const sharedOAuth2ClientMock = mock(() => ({
     Promise.resolve({ tokens: { access_token: 'mock-token' } }),
   ),
   request: mock(
-    (
-      options: Parameters<OAuth2Client['request']>[0],
-    ): GaxiosPromise<unknown> => {
+    <T>(options: Parameters<OAuth2Client['request']>[0]): GaxiosPromise<T> => {
       // Replace YouTube API URLs with localhost mock server
       if (
         options.url &&
@@ -41,7 +39,7 @@ export const sharedOAuth2ClientMock = mock(() => ({
         )
       }
       // Call the real OAuth2Client.request method
-      return realOAuth2Client.request(options)
+      return realOAuth2Client.request<T>(options)
     },
   ),
 }))
